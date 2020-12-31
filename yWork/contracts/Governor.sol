@@ -44,14 +44,29 @@ contract Governor {
     event NewPendingOwnership(address indexed from, address indexed to);
     event NewOwnership(address indexed from, address indexed to);
 
+    constructor(address _timelock, address _ywk) public {
+        timelock = TreasuryInterface(_timelock);
+        ywk = YwkInterface(_ywk);
+    }
+
     /**
      * @dev the number of votes in support of a mint required in order for a quorum to be reached
      */
-    function quorumVotes() public pure returns (uint) { return 40_000_000e18; } // 4% of total supply
+    function quorumVotes() public pure returns (uint256) { return 40_000_000e18; } // 4% of total supply
 
     /**
      * @dev the number of votes required in order for a voter to become a proposer
      */
-    function proposalThreshold() public pure returns (uint) { return 500_000e18; } // 0.5% of total supply
+    function proposalThreshold() public pure returns (uint256) { return 500_000e18; } // 0.5% of total supply
 
+    function propose() public returns (uint256) {
+        require(ywk.getPriorVotes(msg.sender, SafeMath.sub(block.number, 1)) > proposalThreshold(), "Governor::propose: proposer votes below proposal threshold");
+		require(targets.length == values.length && targets.length == signatures.length && targets.length == calldatas.length, "Governor::propose: proposal function information arity mismatch");
+
+    }
+
+}
+
+interface TreasuryInterface {
+    function executeTransaction(address target, uint value, string calldata signature, bytes calldata data, uint eta) external payable returns (bytes memory);
 }

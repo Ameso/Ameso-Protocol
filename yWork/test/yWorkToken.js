@@ -89,4 +89,16 @@ contract("yWorkToken", async addresses => {
 
         await revertToSnapShot(snapShotId.id);
     });
+
+    it('Can change the minter', async () => {
+
+    });
+
+    it('Should not be able to mint too often', async () => {
+
+    });
+
+    it('Use the permit function to allow another address to spend my tokens', async () => {
+
+    });
 });

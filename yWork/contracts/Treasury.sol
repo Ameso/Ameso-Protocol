@@ -32,7 +32,7 @@ contract Treasury {
         emit NewPendingAdmin(pendingAdmin);
     }
 
-    function executeTransaction() {
+    function executeTransaction() public {
         require(msg.sender == admin, "Treasury::executeTransaction: Call must come from admin."); 
     }
 }

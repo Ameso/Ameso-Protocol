@@ -25,6 +25,34 @@ advanceBlock = async () => {
     });
 }
 
+takeSnapshot = () => {
+    return new Promise((resolve, reject) => {
+        web3.currentProvider.send({
+            jsonrpc: '2.0',
+            method: 'evm_snapshot',
+            id: new Date().getTime()
+        }, (err, snapshotId) => {
+            if (err) { return reject(err) }
+            return resolve(snapshotId)
+        });
+    });
+}
+
+revertToSnapShot = (id) => {
+    return new Promise((resolve, reject) => {
+        web3.currentProvider.send({
+            jsonrpc: '2.0',
+            method: 'evm_revert',
+            params: [id],
+            id: new Date().getTime()
+        }, (err, result) => {
+            if (err) { return reject(err) }
+            return resolve(result)
+        });
+    });
+}
+  
+
 function timeout(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -44,8 +72,7 @@ contract("yWorkToken", async addresses => {
 
     it('Proper minting', async () => {
         // increase current time in eth blockchain
-        let result = await web3.currentProvider.send({jsonrpc: "2.0", method: "evm_snapshot", params: [500]});
-        console.log(result);
+        let snapShotId = await takeSnapshot();
 
         let newBlock = await web3.eth.getBlock('latest');
 
@@ -59,10 +86,7 @@ contract("yWorkToken", async addresses => {
         assert(newTreasuryBalance.toString() === "750000001", "Incorrect treasury balance: " + newTreasuryBalance);
 
         shouldThrow(yWorkInstance.mint(1, {from: user2}));
-    });
 
-    it('Proper permit permissions', async () => {
-        // test permit function
-        // try erc20 transferFrom function
+        await revertToSnapShot(snapShotId.id);
     });
 });

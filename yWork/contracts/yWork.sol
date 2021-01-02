@@ -18,7 +18,7 @@ contract yWork {
 
     mapping (string => Job) jobs;
 	address treasury;
-    
+
     constructor(address _treasury) {
         treasury = _treasury;
     }
@@ -27,7 +27,7 @@ contract yWork {
      * @dev Review calls this function to approve/disapprove job done by contractor
      */
     function reviewJob(string memory _ipfsID, bool _approve) public {
-        // Caller has to be a reviewer
+        // Add caller to mapping of reviewers
 
         // Caller cannot review a job multiple times
 
@@ -50,5 +50,10 @@ contract yWork {
 
     function removeJob() public {
 
+    }
+
+    function payReviewers() public {
+        // Can only be called by the treasury
+        require(msg.sender == treasury, "yWork::payReviewers: only treasury can call this function");
     }
 }

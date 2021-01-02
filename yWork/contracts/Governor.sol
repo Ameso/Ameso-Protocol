@@ -40,15 +40,17 @@ contract Governor {
     uint256 public proposalCount;
     TreasuryInterface public treasury;
     YwkInterface public ywk;
+    YwkCoreInterface public ywkApp;
 
     // -- Events --
 
     event NewPendingOwnership(address indexed from, address indexed to);
     event NewOwnership(address indexed from, address indexed to);
 
-    constructor(address _treasury, address _ywk) {
+    constructor(address _treasury, address _ywk, address _ywkCore) {
         treasury = TreasuryInterface(_treasury);
         ywk = YwkInterface(_ywk);
+        ywkApp = YwkCoreInterface(_ywkCore);
     }
 
     /**
@@ -75,5 +77,9 @@ interface TreasuryInterface {
 }
 
 interface YwkInterface {
+
+}
+
+interface YwkCoreInterface {
 
 }

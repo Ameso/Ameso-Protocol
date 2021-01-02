@@ -133,7 +133,33 @@ contract("yWorkToken", async addresses => {
     });
 
     it('Should not be able to mint too often', async () => {
+        
+    });
 
+    it('Test simple allowance to allow another user to spend my tokens', async () => {
+        await yWorkInstance.approve(user3, 1000, {from: user1});
+
+        let allowedAmount = await yWorkInstance.allowance(user1, user3);
+
+        let user1Bal = await yWorkInstance.balanceOf(user1);
+
+        assert(allowedAmount.toString() === "1000", "Incorrect allowance amount: ")
+
+        // once approved, user3 should be able to spend tokens.
+        // only the recipient (user3) should be able to execute the transferFrom
+        await shouldThrow(yWorkInstance.transferFrom(user1, user3, 1000, {from: admin}));
+        await yWorkInstance.transferFrom(user1, user3, 1000, {from: user3});
+
+        let user3NewBal = await yWorkInstance.balanceOf(user3);
+
+        assert(user3NewBal.toString() === "1000", "User3 does not have the correct balance: " + user3NewBal.toString());
+
+        let user1NewBal = await yWorkInstance.balanceOf(user1);
+
+        assert(user1NewBal.toString() === "249999000", "User1 did not have their balance removed: " + user1NewBal.toString());
+    });
+
+    it('User should not be able to spend more than allowed tokens', async () => {
     });
 
     it('Use the permit function to allow another address to spend my tokens', async () => {

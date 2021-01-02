@@ -32,6 +32,9 @@ contract Treasury {
         emit NewPendingAdmin(pendingAdmin);
     }
 
+    /**
+     * @dev The treasury will execute functions only if the Governance contract allows of it
+     */
     function executeTransaction() public {
         require(msg.sender == admin, "Treasury::executeTransaction: Call must come from admin."); 
     }

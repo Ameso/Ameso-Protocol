@@ -19,7 +19,7 @@ contract yWork {
     mapping (string => Job) jobs;
 	address treasury;
     
-    constructor(address _treasury) public {
+    constructor(address _treasury) {
         treasury = _treasury;
     }
 

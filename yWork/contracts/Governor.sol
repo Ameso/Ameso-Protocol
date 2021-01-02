@@ -46,7 +46,7 @@ contract Governor {
     event NewPendingOwnership(address indexed from, address indexed to);
     event NewOwnership(address indexed from, address indexed to);
 
-    constructor(address _treasury, address _ywk) public {
+    constructor(address _treasury, address _ywk) {
         treasury = TreasuryInterface(_treasury);
         ywk = YwkInterface(_ywk);
     }

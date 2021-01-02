@@ -59,6 +59,9 @@ contract yWorkToken is ERC20 {
     using SafeMath for uint256;
 
     // -- EIP 712 --
+    // All of these contants are hashed together in the constructor. They are a unique identifier for the contract
+    // This will be used in the permit function so owners can allow other addresses to spend their tokens
+    // This gives the ability to create gasless transactions (EIP2612)
     bytes32 private constant DOMAIN_TYPE_HASH = keccak256(
         "EIP712Domain(string name,string version,uint256 chainId,address verifyContract,bytes32 salt)"
     );

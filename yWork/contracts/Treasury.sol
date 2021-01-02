@@ -13,7 +13,7 @@ contract Treasury {
     /**
      * @param _admin The governance contract
      */
-    constructor(address _admin) public {
+    constructor(address _admin) {
         admin = _admin;
     }
 

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.7.0;
 
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
@@ -163,12 +165,12 @@ contract nWorkToken is ERC20 {
 
     /**
      * @dev Change the minter address
-     * @param minter_ The address of the new minter
+     * @param _minter The address of the new minter
      */
-    function setMinter(address minte external {
+    function setMinter(address _minter) external {
         require(msg.sender == minter, "NWK::setMinter: only the minter can change the minter address");
-        emit MinterChanged(minter, minter_);
-        minter = minter_;
+        emit MinterChanged(minter, _minter);
+        minter = _minter;
     }
 
     /**

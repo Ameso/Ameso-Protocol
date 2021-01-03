@@ -2,7 +2,7 @@ pragma solidity ^0.7.0;
 
 import '@openzeppelin/contracts/math/SafeMath.sol';
 
-contract yWork {
+contract nWork {
     using SafeMath for uint256;
 
     struct Job {
@@ -54,6 +54,6 @@ contract yWork {
 
     function payReviewers() public {
         // Can only be called by the treasury
-        require(msg.sender == treasury, "yWork::payReviewers: only treasury can call this function");
+        require(msg.sender == treasury, "nWork::payReviewers: only treasury can call this function");
     }
 }

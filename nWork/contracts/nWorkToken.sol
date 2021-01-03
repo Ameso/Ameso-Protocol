@@ -5,9 +5,9 @@ import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import '@openzeppelin/contracts/math/SafeMath.sol';
 
 
-/// @title yWork application
+/// @title nWork application
 /// @author Simon Liu
-/// yWork allows holders get rewarded for doing work
+/// nWork allows holders get rewarded for doing work
 /// 1. Contractors get paid per task. Base reward + optional tip from employer.
 /// 2. Employers list jobs. Must offer base fee determined by curators (a percentage is burned). Employers can tip contractor and curator. 
 /// 3. Curators check work of contractors. To enroll, the curator must deposit x tokens. They earn salary (minted), must remain productive or else salary is burned.  
@@ -28,7 +28,7 @@ import '@openzeppelin/contracts/math/SafeMath.sol';
 
 ///////////// EDITS 
 
-/// yWork allows holders get rewarded for doing work
+/// nWork allows holders get rewarded for doing work
 /// 1. Contractors get paid per task. Base reward + optional tip from employer.
 ///    Contractors can also review tasks of other jobs. Trustworthiness is determined by time in contract & social score.
 /// 2. Employers list jobs. Must offer base fee determined by curators (a percentage is burned). Employers can tip contractor. 
@@ -48,14 +48,14 @@ import '@openzeppelin/contracts/math/SafeMath.sol';
 /// All other information will be stored using ethereum's ipfs
 
 /**
- * @title yWorkToken contract
- * @dev This is the implementation of the ERC20 yWork Token.
+ * @title nWorkToken contract
+ * @dev This is the implementation of the ERC20 nWork Token.
  * The implementation exposes a Permit() function to allow for a spender to send a signed message
  * and approve funds to a spender following EIP2612 to make integration with other contracts easier.
  * EIP2612 describes how to use EIP712 for the Permit() function.
  *
  */
-contract yWorkToken is ERC20 {
+contract nWorkToken is ERC20 {
     using SafeMath for uint256;
 
     // -- EIP 712 --
@@ -65,7 +65,7 @@ contract yWorkToken is ERC20 {
     bytes32 private constant DOMAIN_TYPE_HASH = keccak256(
         "EIP712Domain(string name,string version,uint256 chainId,address verifyContract,bytes32 salt)"
     );
-    bytes32 private constant DOMAIN_NAME_HASH = keccak256("yWork Token");
+    bytes32 private constant DOMAIN_NAME_HASH = keccak256("nWork Token");
     bytes32 private constant DOMAIN_VERSION_HASH = keccak256("0");
     bytes32 private constant DOMAIN_SALT = 0x980cb6eac3e40de8c56a14e3590297fed65690e513fd5c1ef2ced9408b30303f;
     bytes32 private constant PERMIT_TYPE_HASH = keccak256(
@@ -90,14 +90,14 @@ contract yWorkToken is ERC20 {
     uint8 public constant mintCap = 2;
 
     /**
-     * @dev Construct a new yWork token
+     * @dev Construct a new nWork token
      * @param _account Developer account to initially mint tokens
      * @param _minter The account with minting ability
      * @param _initialSupplyDev Amount to give to the dev account
      * @param _initialSupplyMinter Amount to give to the Treasury
      * @param _mintingAllowedAfter The timestamp after which minting may occur
      */
-    constructor(address _account, address _minter, uint256 _initialSupplyDev, uint256 _initialSupplyMinter, uint256 _mintingAllowedAfter) ERC20 ("yWork Token", "YWK") {
+    constructor(address _account, address _minter, uint256 _initialSupplyDev, uint256 _initialSupplyMinter, uint256 _mintingAllowedAfter) ERC20 ("nWork Token", "YWK") {
         require(_mintingAllowedAfter >= block.timestamp, "YWT::constructor: minting can only begin after deployment");
         
         _mint(_account, _initialSupplyDev);

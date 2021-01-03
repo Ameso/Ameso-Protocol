@@ -3,7 +3,7 @@ pragma solidity ^0.7.0;
 import '@openzeppelin/contracts/math/SafeMath.sol';
 
 /**
- * @title yWork Governance contract
+ * @title nWork Governance contract
  * @dev All contracts that will be owned by a Governor entity should extend this contract.
  */
 contract Governor {

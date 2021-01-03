@@ -39,18 +39,18 @@ contract Governor {
 
     uint256 public proposalCount;
     TreasuryInterface public treasury;
-    YwkInterface public ywk;
-    YwkCoreInterface public ywkApp;
+    NwkInterface public nwk;
+    NwkCoreInterface public nwkApp;
 
     // -- Events --
 
     event NewPendingOwnership(address indexed from, address indexed to);
     event NewOwnership(address indexed from, address indexed to);
 
-    constructor(address _treasury, address _ywk, address _ywkCore) {
+    constructor(address _treasury, address _nwk, address _nwkCore) {
         treasury = TreasuryInterface(_treasury);
-        ywk = YwkInterface(_ywk);
-        ywkApp = YwkCoreInterface(_ywkCore);
+        nwk = NwkInterface(_nwk);
+        nwkApp = NwkCoreInterface(_nwkCore);
     }
 
     /**
@@ -64,8 +64,8 @@ contract Governor {
     function proposalThreshold() public pure returns (uint256) { return 500_000e18; } // 0.5% of total supply
 
     /*
-    function propose() public returns (uint256) {
-        require(ywk.getPriorVotes(msg.sender, SafeMath.sub(block.number, 1)) > proposalThreshold(), "Governor::propose: proposer votes below proposal threshold");
+    function proNpose() public returns (uint256) {
+        require(nwk.getPriorVotes(msg.sender, SafeMath.sub(block.number, 1)) > proposalThreshold(), "Governor::propose: proposer votes below proposal threshold");
 		require(targets.length == values.length && targets.length == signatures.length && targets.length == calldatas.length, "Governor::propose: proposal function information arity mismatch");
 
     }
@@ -76,10 +76,10 @@ interface TreasuryInterface {
     function executeTransaction(address target, uint value, string calldata signature, bytes calldata data, uint eta) external payable returns (bytes memory);
 }
 
-interface YwkInterface {
+interface NwkInterface {
 
 }
 
-interface YwkCoreInterface {
+interface NwkCoreInterface {
 
 }

@@ -97,8 +97,8 @@ contract nWorkToken is ERC20 {
      * @param _initialSupplyMinter Amount to give to the Treasury
      * @param _mintingAllowedAfter The timestamp after which minting may occur
      */
-    constructor(address _account, address _minter, uint256 _initialSupplyDev, uint256 _initialSupplyMinter, uint256 _mintingAllowedAfter) ERC20 ("nWork Token", "YWK") {
-        require(_mintingAllowedAfter >= block.timestamp, "YWT::constructor: minting can only begin after deployment");
+    constructor(address _account, address _minter, uint256 _initialSupplyDev, uint256 _initialSupplyMinter, uint256 _mintingAllowedAfter) ERC20 ("nWork Token", "NWK") {
+        require(_mintingAllowedAfter >= block.timestamp, "NWK::constructor: minting can only begin after deployment");
         
         _mint(_account, _initialSupplyDev);
         emit Transfer(address(0), _account, _initialSupplyDev);
@@ -155,8 +155,8 @@ contract nWorkToken is ERC20 {
         nonces[_owner] = nonces[_owner].add(1);
 
         address recoveredAddress = ECDSA.recover(digest, abi.encodePacked(_r, _s, _v));
-        require(_owner == recoveredAddress, "YWK: invalid permit");
-        require(_deadline == 0 || block.timestamp <= _deadline, "YWK: expired permit");
+        require(_owner == recoveredAddress, "NWK: invalid permit");
+        require(_deadline == 0 || block.timestamp <= _deadline, "NWK: expired permit");
 
         _approve(_owner, _spender, _value);
     }
@@ -165,8 +165,8 @@ contract nWorkToken is ERC20 {
      * @dev Change the minter address
      * @param minter_ The address of the new minter
      */
-    function setMinter(address minter_) external {
-        require(msg.sender == minter, "YWK::setMinter: only the minter can change the minter address");
+    function setMinter(address minte external {
+        require(msg.sender == minter, "NWK::setMinter: only the minter can change the minter address");
         emit MinterChanged(minter, minter_);
         minter = minter_;
     }
@@ -175,12 +175,12 @@ contract nWorkToken is ERC20 {
      * @dev mint coins to treasury only when stakeholders approve
      */
     function mint(uint256 _amount) external {
-        require(msg.sender == minter, "YWK::mint: only the treasury can mint");
-        require(block.timestamp >= mintingAllowedAfter, "YWK::mint: minting not allowed yet");
+        require(msg.sender == minter, "NWK::mint: only the treasury can mint");
+        require(block.timestamp >= mintingAllowedAfter, "NWK::mint: minting not allowed yet");
 
         // record the mint
         mintingAllowedAfter = SafeMath.add(block.timestamp, minimumTimeBetweenMints);
-        require(_amount <= SafeMath.div(SafeMath.mul(totalSupply(), mintCap), 100), "YWK::mint: exceeded mint cap");
+        require(_amount <= SafeMath.div(SafeMath.mul(totalSupply(), mintCap), 100), "NWK::mint: exceeded mint cap");
 
         _mint(msg.sender, _amount);
     }

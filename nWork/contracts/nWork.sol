@@ -6,6 +6,10 @@ import '@openzeppelin/contracts/math/SafeMath.sol';
 
 contract nWork {
     using SafeMath for uint256;
+    
+    mapping (string => Job) jobs;
+    uint256 public jobCount;
+	address public treasury;
 
     struct Job {
         // Unique id for each job
@@ -16,10 +20,35 @@ contract nWork {
 
         // Max contractors per job
         uint256 maxContractors;
+
+        // Min contractors per job
+        uint256 minContractors;
+
+        // Contractors enrolled in the job
+        mapping (address => bool) contractors;
+
+        // Reviewers enrolled in the job
+        mapping (address => bool) reviewers;
     }
 
-    mapping (string => Job) jobs;
-	address treasury;
+    struct Review {
+        address reviewer;
+    }
+
+    // Possible states that the Contractor may be in for a specific job
+    enum ContractorJobState {
+        Cancelled,
+        Pending,
+        Completed
+    }
+
+    // Possible states that the job may be in
+    enum JobState {
+        Active,
+        Canceled,
+        Expired,
+        Completed
+    }
 
     constructor(address _treasury) {
         treasury = _treasury;
@@ -40,6 +69,12 @@ contract nWork {
     }
 
     /**
+     * @dev Get the current state of the job
+     */
+    function getJobState(string memory _ipfsID) public view returns (JobState){
+    }
+
+    /**
      * @dev
      * @param _ipfsID Unique ID that points to storage in ipfs
      */
@@ -54,8 +89,14 @@ contract nWork {
 
     }
 
+    function reviewJob() public {
+
+    }
+
     function payReviewers() public {
         // Can only be called by the treasury
         require(msg.sender == treasury, "nWork::payReviewers: only treasury can call this function");
+
+        // Check 
     }
 }

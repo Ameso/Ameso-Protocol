@@ -11,6 +11,29 @@ import '@openzeppelin/contracts/math/SafeMath.sol';
 contract Governor {
     using SafeMath for uint256;
 
+    /**
+     * @dev the number of votes in support of a mint required in order for a quorum to be reached
+     */
+    function quorumVotes() public pure returns (uint256) { return 40_000_000e18; } // 4% of total supply
+
+    /**
+     * @dev the number of votes required in order for a voter to become a proposer
+     */
+    function proposalThreshold() public pure returns (uint256) { return 500_000e18; } // 0.5% of total supply
+
+
+    // -- State --
+
+    uint256 public proposalCount;
+    TreasuryInterface public treasury;
+    NwkInterface public nwk;
+    NwkCoreInterface public nwkApp;
+
+    // -- Events --
+
+    event NewPendingOwnership(address indexed from, address indexed to);
+    event NewOwnership(address indexed from, address indexed to);
+
     struct Proposal {
         // Unique id for looking up a proposal
         uint256 id;
@@ -37,35 +60,13 @@ contract Governor {
         //mapping (address => Receipt) receipts;
     }
 
-    // -- State --
-
-    uint256 public proposalCount;
-    TreasuryInterface public treasury;
-    NwkInterface public nwk;
-    NwkCoreInterface public nwkApp;
-
-    // -- Events --
-
-    event NewPendingOwnership(address indexed from, address indexed to);
-    event NewOwnership(address indexed from, address indexed to);
-
     constructor(address _treasury, address _nwk, address _nwkCore) {
         treasury = TreasuryInterface(_treasury);
         nwk = NwkInterface(_nwk);
         nwkApp = NwkCoreInterface(_nwkCore);
     }
 
-    /**
-     * @dev the number of votes in support of a mint required in order for a quorum to be reached
-     */
-    function quorumVotes() public pure returns (uint256) { return 40_000_000e18; } // 4% of total supply
-
-    /**
-     * @dev the number of votes required in order for a voter to become a proposer
-     */
-    function proposalThreshold() public pure returns (uint256) { return 500_000e18; } // 0.5% of total supply
-
-    /*
+        /*
     function proNpose() public returns (uint256) {
         require(nwk.getPriorVotes(msg.sender, SafeMath.sub(block.number, 1)) > proposalThreshold(), "Governor::propose: proposer votes below proposal threshold");
 		require(targets.length == values.length && targets.length == signatures.length && targets.length == calldatas.length, "Governor::propose: proposal function information arity mismatch");

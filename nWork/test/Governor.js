@@ -45,7 +45,19 @@ contract("Governor", async addresses => {
     });
 
     it('Can deploy governance contract', async () => {
-        Governor.new(treasury.address, nWorkInstance.address, nWorkApp.address);
+        governor = await Governor.new(treasury.address, nWorkInstance.address, nWorkApp.address);
+    });
+
+    it('Governance contract has the correct quorum: 30million', async () => {
+        let quorum = await governor.quorumVotes();
+
+        assert(quorum.toString() === "30000000", "Incorrect quorum amount: " + quorum.toString());
+    });
+
+    it('Governance contract has the correct proposal threshold', async () => {
+        let threshold = await governor.proposalThreshold();
+
+        assert(threshold.toString() === "500000", "Incorrect threshold: " + threshold.toString());
     });
 
     it('Test governance voting feature by changing admin for treasury to governance contract', async () => {
@@ -55,6 +67,7 @@ contract("Governor", async addresses => {
         await shouldThrow(treasury.setPendingAdmin(user1, {from:treasury.address}));
         await shouldThrow(treasury.setPendingAdmin(user1, {from:admin}));
 
-        // the governor needs to vote to approve 
+        // the governor needs to vote to approve
+
     });
 });

@@ -93,12 +93,12 @@ contract("nWorkToken", async addresses => {
         // deployer (admin in this case) isn't the one that becomes the minter by default
         await shouldThrow(nWorkInstance.mint(10, {from: admin})); 
 
-        await nWorkInstance.mint(1, {from: user2});
+        await nWorkInstance.mint(user2, 1, {from: user2});
         let newTreasuryBalance = await nWorkInstance.balanceOf(user2);
         assert(newTreasuryBalance.toString() === "750000001", "Incorrect treasury balance: " + newTreasuryBalance.toString());
 
         // should not allow mint again. Too soon
-        await shouldThrow(nWorkInstance.mint(1, {from: user2}));
+        await shouldThrow(nWorkInstance.mint(user2, 1, {from: user2}));
 
         await revertToSnapShot(snapShotId.result);
     });
@@ -107,9 +107,9 @@ contract("nWorkToken", async addresses => {
         let snapShotId = await takeSnapshot();
 
         // should not be able to mint past 2 percent
-        await shouldThrow(nWorkInstance.mint(20000001, {from: user2}));
+        await shouldThrow(nWorkInstance.mint(user2, 20000001, {from: user2}));
         
-        await nWorkInstance.mint(20000000, {from: user2});
+        await nWorkInstance.mint(user2, 20000000, {from: user2});
 
         await revertToSnapShot(snapShotId.result);
     });
@@ -120,14 +120,16 @@ contract("nWorkToken", async addresses => {
         await nWorkInstance.setMinter(user3, {from: user2});
 
         // user2 shouldn't be minter anymore
-        await shouldThrow(nWorkInstance.mint(100, {from: user2}));
+        await shouldThrow(nWorkInstance.mint(user2, 100, {from: user2}));
 
-        await nWorkInstance.mint(100, {from: user3});
+        await nWorkInstance.mint(user2, 100, {from: user3});
 
-        // make sure that user3 has the correct mint amount, the old balance of the previous minter stays the same
+        // user3 should still have 0 and user2 should have all balance
         let user3TreasuryBal = await nWorkInstance.balanceOf(user3);
+        let user2TreasuryBal = await nWorkInstance.balanceOf(user2);
 
-        assert(user3TreasuryBal.toString() === "100", "User3 incorrect balance: " + user3TreasuryBal.toString());
+        assert(user3TreasuryBal.toString() === "0", "User3 incorrect balance: " + user3TreasuryBal.toString());
+        assert(user2TreasuryBal.toString() === "750000100", "User2 incorrect balance: " + user2TreasuryBal.toString());
 
         await revertToSnapShot(snapShotId.result);
     });

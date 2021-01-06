@@ -14,12 +14,12 @@ contract Governor {
     /**
      * @dev the number of votes in support of a mint required in order for a quorum to be reached
      */
-    function quorumVotes() public pure returns (uint256) { return 30_000_000e18; } // 3% of total supply
+    function quorumVotes() public pure returns (uint256) { return 30000000; } // 3% of total supply
 
     /**
      * @dev the number of votes required in order for a voter to become a proposer
      */
-    function proposalThreshold() public pure returns (uint256) { return 500_000e18; } // 0.5% of total supply
+    function proposalThreshold() public pure returns (uint256) { return 500000; } // 0.5% of total supply
 
 
     // -- State --
@@ -118,13 +118,10 @@ contract Governor {
         nwkApp = NwkCoreInterface(_nwkCore);
     }
 
-        /*
-    function proNpose() public returns (uint256) {
+    function propose(address[] memory targets, uint[] memory values, string[] memory signatures, bytes[] memory calldatas, string memory description) public returns (uint256) {
         require(nwk.getPriorVotes(msg.sender, SafeMath.sub(block.number, 1)) > proposalThreshold(), "Governor::propose: proposer votes below proposal threshold");
 		require(targets.length == values.length && targets.length == signatures.length && targets.length == calldatas.length, "Governor::propose: proposal function information arity mismatch");
-
     }
-    */
 }
 
 interface TreasuryInterface {
@@ -132,7 +129,7 @@ interface TreasuryInterface {
 }
 
 interface NwkInterface {
-
+    function getPriorVotes(address account, uint256 blockNumber) external view returns (uint256);
 }
 
 interface NwkCoreInterface {

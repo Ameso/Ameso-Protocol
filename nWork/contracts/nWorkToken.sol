@@ -5,49 +5,11 @@ pragma solidity ^0.7.0;
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import '@openzeppelin/contracts/math/SafeMath.sol';
+import '@openzeppelin/contracts/utils/SafeCast.sol';
 
 
 /// @title nWork application
-/// @author Simon Liu
-/// nWork allows holders get rewarded for doing work
-/// 1. Contractors get paid per task. Base reward + optional tip from employer.
-/// 2. Employers list jobs. Must offer base fee determined by curators (a percentage is burned). Employers can tip contractor and curator. 
-/// 3. Curators check work of contractors. To enroll, the curator must deposit x tokens. They earn salary (minted), must remain productive or else salary is burned.  
-/// 4. PolicyMakers are stakers that determine the base fee for each listing. Also determines salary of curators. 
-/// 5. Contract owner (multisig) can check policy makers by minting new coins and dilute policy makers percentage. This shouldn't happen frequently. Is this too much power?
-
-/// How to disincentivize bad behavior:
-/// 1. Contractors: before payout, curators will review the work of the contractors. Contractors won't want to spam contract because they have to pay eth gas.
-/// 2. Employers: must pay to list jobs
-/// 3. Curators: salary determined by policy makers. Can get salary cut if inactive or acting maliciously (determined by policy makers). 
-/// 4. PolicyMakers: need quorum before action. Last resort, multi sig wallet can mint new coins to dilute majority vote.
-/// 5. Multi Sig Wallet Owner: All other parties dump the coin and render token useless.
-
-/// How to transfer "job data" to blockchain
-/// Using chainlink, we determine the official frontend location 
-/// This will be initially set by the contract owner. Can be changed with governance token reach quorum.
-/// All other information will be stored using ethereum's ipfs. Expensive?
-
-///////////// EDITS 
-
-/// nWork allows holders get rewarded for doing work
-/// 1. Contractors get paid per task. Base reward + optional tip from employer.
-///    Contractors can also review tasks of other jobs. Trustworthiness is determined by time in contract & social score.
-/// 2. Employers list jobs. Must offer base fee determined by curators (a percentage is burned). Employers can tip contractor. 
-/// 3. PolicyMakers are stakers that determine the base fee for each listing.
-/// 4. Contract owner (multisig) can check policy makers by minting new coins and dilute policy makers percentage. This shouldn't happen frequently. Is this too much power?
-
-/// How to disincentivize bad behavior:
-/// 1. Contractors: before payout, curators will review the work of the contractors. Contractors won't want to spam contract because they have to pay eth gas.
-///    The longer the contractor has been working, the more trustworth their reviewship.
-/// 2. Employers: must pay to list jobs
-/// 3. PolicyMakers: need quorum before action. Last resort, multi sig wallet can mint new coins to dilute majority vote.
-/// 4. Multi Sig Wallet Owner: All other parties dump the coin and render token useless.
-
-/// How to transfer "job data" to blockchain
-/// Store official front end domain name as variable 
-/// This will be initially set by the contract owner. Can be changed with governance token reach quorum.
-/// All other information will be stored using ethereum's ipfs
+/// @author Simon Liu & Donald Liu
 
 /**
  * @title nWorkToken contract
@@ -77,6 +39,9 @@ contract nWorkToken is ERC20 {
     // -- Events --
     event MinterChanged(address minter, address newMinter);
 
+    // An event thats emitted when a delegate account's vote balance changes
+    event DelegateVotesChanged(address indexed delegate, uint previousBalance, uint newBalance);
+
     // -- State --
     bytes32 private DOMAIN_SEPARATOR;
 
@@ -90,6 +55,18 @@ contract nWorkToken is ERC20 {
 
     // Cap on the percentage of totalSupply that can be minted at each mint
     uint8 public constant mintCap = 2;
+
+    // A checkpoint for marking number of votes from a given block
+    struct Checkpoint {
+        uint32 fromBlock;
+        uint128 votes;
+    }
+
+    // A record of votes checkpoints for each account, by index
+    mapping (address => mapping (uint32 => Checkpoint)) public checkpoints;
+
+    // The number of checkpoints for each account
+    mapping (address => uint32) public numCheckpoints;
 
     /**
      * @dev Construct a new nWork token
@@ -174,17 +151,79 @@ contract nWorkToken is ERC20 {
     }
 
     /**
-     * @dev mint coins to treasury only when stakeholders approve
+     * @dev Mint new tokens
+     * @param _dst The address of the destination accoutn
+     * @param _rawAmount The number of tokens to be minted
      */
-    function mint(uint256 _amount) external {
+    function mint(address _dst, uint256 _rawAmount) external {
         require(msg.sender == minter, "NWK::mint: only the treasury can mint");
         require(block.timestamp >= mintingAllowedAfter, "NWK::mint: minting not allowed yet");
+        require(_dst != address(0), "NWK::mint: cannot transfer to the zero address");
 
         // record the mint
         mintingAllowedAfter = SafeMath.add(block.timestamp, minimumTimeBetweenMints);
-        require(_amount <= SafeMath.div(SafeMath.mul(totalSupply(), mintCap), 100), "NWK::mint: exceeded mint cap");
 
-        _mint(msg.sender, _amount);
+        // mint the amount
+        uint128 amount = SafeCast.toUint128(_rawAmount);
+        require(amount <= SafeMath.div(SafeMath.mul(totalSupply(), mintCap), 100), "NWK::mint: exceeded mint cap");
+
+        _mint(_dst, amount);
+
+        // move delegates
+    }
+
+     /**
+     * @notice Determine the prior number of votes for an account as of a block number
+     * @dev Block number must be a finalized block or else this function will revert to prevent misinformation.
+     * @param account The address of the account to check
+     * @param blockNumber The block number to get the vote balance at
+     * @return The number of votes the account had as of the given block
+     */
+    function getPriorVotes(address account, uint blockNumber) public view returns (uint128) {
+        require(blockNumber < block.number, "NWK::getPriorVotes: not yet determined");
+
+        uint32 nCheckpoints = numCheckpoints[account];
+        if (nCheckpoints == 0) {
+            return 0;
+        }
+
+        // First check most recent balance
+        if (checkpoints[account][nCheckpoints - 1].fromBlock <= blockNumber) {
+            return checkpoints[account][nCheckpoints - 1].votes;
+        }
+
+        // Next check implicit zero balance
+        if (checkpoints[account][0].fromBlock > blockNumber) {
+            return 0;
+        }
+
+        uint32 lower = 0;
+        uint32 upper = nCheckpoints - 1;
+        while (upper > lower) {
+            uint32 center = upper - (upper - lower) / 2; // ceil, avoiding overflow
+            Checkpoint memory cp = checkpoints[account][center];
+            if (cp.fromBlock == blockNumber) {
+                return cp.votes;
+            } else if (cp.fromBlock < blockNumber) {
+                lower = center;
+            } else {
+                upper = center - 1;
+            }
+        }
+        return checkpoints[account][lower].votes;
+    }
+
+    function _writeCheckpoint(address delegatee, uint32 nCheckpoints, uint128 oldVotes, uint128 newVotes) internal {
+        uint32 blockNumber = SafeCast.toUint32(block.number);
+
+        if (nCheckpoints > 0 && checkpoints[delegatee][nCheckpoints - 1].fromBlock == blockNumber) {
+            checkpoints[delegatee][nCheckpoints - 1].votes = newVotes;
+        } else {
+            checkpoints[delegatee][nCheckpoints] = Checkpoint(blockNumber, newVotes);
+            numCheckpoints[delegatee] = nCheckpoints + 1;
+        }
+
+        emit DelegateVotesChanged(delegatee, oldVotes, newVotes);
     }
 
     /**

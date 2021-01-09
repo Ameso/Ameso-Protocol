@@ -1,7 +1,7 @@
 {
   "_format": "hh-sol-cache-2",
   "files": {
-    "/home/simon/nWorkApp2/contracts/Governor.sol": {
+    "/home/simon/nWorkApp/contracts/Governor.sol": {
       "lastModificationDate": 1609981488078,
       "contentHash": "c03e3a1ea3a72d0d5460598581f07ae7",
       "sourceName": "contracts/Governor.sol",
@@ -40,7 +40,7 @@
         "TreasuryInterface"
       ]
     },
-    "/home/simon/nWorkApp2/node_modules/@openzeppelin/contracts/math/SafeMath.sol": {
+    "/home/simon/nWorkApp/node_modules/@openzeppelin/contracts/math/SafeMath.sol": {
       "lastModificationDate": 1609981232885,
       "contentHash": "4d29a22b28b7ec0e89c3cdf1c5e72b83",
       "sourceName": "@openzeppelin/contracts/math/SafeMath.sol",
@@ -74,7 +74,7 @@
         "SafeMath"
       ]
     },
-    "/home/simon/nWorkApp2/contracts/Treasury.sol": {
+    "/home/simon/nWorkApp/contracts/Treasury.sol": {
       "lastModificationDate": 1609981500274,
       "contentHash": "90f3a3b9cbb6da604629fe9252996db8",
       "sourceName": "contracts/Treasury.sol",
@@ -110,7 +110,7 @@
         "Treasury"
       ]
     },
-    "/home/simon/nWorkApp2/node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol": {
+    "/home/simon/nWorkApp/node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol": {
       "lastModificationDate": 1609981232861,
       "contentHash": "1d93743f6ca9d2ecf9b3c26718faf610",
       "sourceName": "@openzeppelin/contracts/token/ERC20/ERC20.sol",
@@ -148,7 +148,7 @@
         "ERC20"
       ]
     },
-    "/home/simon/nWorkApp2/node_modules/@openzeppelin/contracts/GSN/Context.sol": {
+    "/home/simon/nWorkApp/node_modules/@openzeppelin/contracts/GSN/Context.sol": {
       "lastModificationDate": 1609981232857,
       "contentHash": "2adbd82f6d055a4751566d4671512b03",
       "sourceName": "@openzeppelin/contracts/GSN/Context.sol",
@@ -182,7 +182,7 @@
         "Context"
       ]
     },
-    "/home/simon/nWorkApp2/node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol": {
+    "/home/simon/nWorkApp/node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol": {
       "lastModificationDate": 1609981232865,
       "contentHash": "e0a41531d159d3a32f84b7a3ecf9fabb",
       "sourceName": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
@@ -216,7 +216,7 @@
         "IERC20"
       ]
     },
-    "/home/simon/nWorkApp2/contracts/nWorkToken.sol": {
+    "/home/simon/nWorkApp/contracts/nWorkToken.sol": {
       "lastModificationDate": 1609981427730,
       "contentHash": "d11861093fd0875bd24d48bfa6b34f79",
       "sourceName": "contracts/nWorkToken.sol",
@@ -255,7 +255,7 @@
         "nWorkToken"
       ]
     },
-    "/home/simon/nWorkApp2/node_modules/@openzeppelin/contracts/cryptography/ECDSA.sol": {
+    "/home/simon/nWorkApp/node_modules/@openzeppelin/contracts/cryptography/ECDSA.sol": {
       "lastModificationDate": 1609981232857,
       "contentHash": "06d35974124c53de900f77f0b35bb077",
       "sourceName": "@openzeppelin/contracts/cryptography/ECDSA.sol",
@@ -289,7 +289,7 @@
         "ECDSA"
       ]
     },
-    "/home/simon/nWorkApp2/node_modules/@openzeppelin/contracts/utils/SafeCast.sol": {
+    "/home/simon/nWorkApp/node_modules/@openzeppelin/contracts/utils/SafeCast.sol": {
       "lastModificationDate": 1609981232885,
       "contentHash": "c227dcf457382aabf2d78218f6457799",
       "sourceName": "@openzeppelin/contracts/utils/SafeCast.sol",
@@ -323,7 +323,7 @@
         "SafeCast"
       ]
     },
-    "/home/simon/nWorkApp2/contracts/nWork.sol": {
+    "/home/simon/nWorkApp/contracts/nWork.sol": {
       "lastModificationDate": 1609981494574,
       "contentHash": "7467770fd412af0dd08f7521b9447a6d",
       "sourceName": "contracts/nWork.sol",

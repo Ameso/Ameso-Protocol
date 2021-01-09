@@ -58,6 +58,16 @@ describe("nWork Token Contract", function() {
     });
 
     it('Can mint up to 2 percent', async () => {
+        let timestamp = await nwk.mintingAllowedAfter()
+        await mineBlock(provider, timestamp.toString())
+
+        let mintCap = BigNumber.from(await nwk.mintCap())
+        let totalSupply = await nwk.totalSupply()
+        let amount = totalSupply.mul(mintCap).div(100)
+
+        await nwk.connect(user2).mint(user1.address, amount)
+
+        expect(await nwk.balanceOf(user1.address)).to.be.eq(amount.add(250000000))
     });
 
     it('Can change minter', async () => {

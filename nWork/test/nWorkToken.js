@@ -64,18 +64,15 @@ contract("nWorkToken", async addresses => {
 
     it('Can change the minter', async () => {
         let snapShotId = await takeSnapshot();
-        let oldMinter = minter; 
 
         await nWorkInstance.setMinter(user3, {from: minter});
 
-        minter = user3;
-
         await truffleAssert.reverts(
-            nWorkInstance.mint(user2, 100, {from: oldMinter}),
+            nWorkInstance.mint(user2, 100, {from: minter}),
             "NWK::mint: only the treasury can mint"
         )
 
-        await nWorkInstance.mint(user2, 100, {from: minter});
+        await nWorkInstance.mint(user2, 100, {from: user3});
 
         // user3 should still have 0 and user2 should have all balance
         let user3TreasuryBal = await nWorkInstance.balanceOf(user3);
@@ -130,6 +127,20 @@ contract("nWorkToken", async addresses => {
     });
 
     it('Minting should add checkpoint', async () => {
+        let snapShotId = await takeSnapshot()
+
+        let beforeNumChkPnt = await nWorkInstance.numCheckpoints(minter)
+
+        await nWorkInstance.mint(minter, 99, {from: minter}) 
+        
+        let numChkPnt = await nWorkInstance.numCheckpoints(minter)
+        console.log(beforeNumChkPnt, numChkPnt);
+
+        assert(beforeNumChkPnt.add(toBN(1)).toString() === numChkPnt.toString(), 
+            'Incorrect number of checkpoints after mint, before: ' + beforeNumChkPnt.toString() + ' after: ' + numChkPnt.toString()
+        )
+
+        await revertToSnapShot(snapShotId.result)
     });
 
     it('Try get prior votes', async () => {

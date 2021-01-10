@@ -133,5 +133,5 @@ interface NwkInterface {
 }
 
 interface NwkCoreInterface {
-
+    function takeJob() external view;
 }

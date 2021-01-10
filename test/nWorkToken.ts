@@ -2,7 +2,7 @@ import chai, { expect } from 'chai'
 import { BigNumber, Contract, constants, utils } from 'ethers'
 import { solidity, MockProvider, createFixtureLoader, deployContract } from 'ethereum-waffle'
 
-import { nWorkTokenFixture } from './nWorkTokenFixture'
+import { nWorkFixture } from './fixture'
 import nWorkToken from '../artifacts/contracts/nWorkToken.sol/nWorkToken.json'
 import { mineBlock } from './utils'
 
@@ -23,7 +23,7 @@ describe("nWork Token Contract", function() {
     let nwk : Contract
 
     beforeEach(async () => {
-        const fixture = await loadFixture(nWorkTokenFixture)
+        const fixture = await loadFixture(nWorkFixture)
         nwk = fixture.nwk
     });
 

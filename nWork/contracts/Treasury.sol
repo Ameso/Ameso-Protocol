@@ -2,7 +2,6 @@
 pragma solidity ^0.7.0;
 
 import '@openzeppelin/contracts/math/SafeMath.sol';
-import "hardhat/console.sol";
 
 contract Treasury {
 
@@ -12,9 +11,7 @@ contract Treasury {
     event NewPendingAdmin(address indexed newPendingAdmin);
 
     // -- State --
-    uint256 public constant GRACE_PERIOD = 14 days;
-    uint256 public constant MINIMUM_DELAY = 2 days;
-    uint256 public constant MAXIMUM_DELAY = 30 days;
+
     address public admin;
 
     // if we ever want to change the governance contract
@@ -26,13 +23,8 @@ contract Treasury {
 
     /**
      * @param _admin The governance contract
-     * @param _delay Delay before we can deploy. Used to allow dependencies to deploy first.
      */
-    constructor(address _admin, uint256 _delay) {
-        console.log('Deploying');
-        console.log(_delay);
-        require(_delay >= MINIMUM_DELAY, "Treasury:constructor: Delay must exceed minimum delay");
-        require(_delay <= MAXIMUM_DELAY, "Treasury:constructor: Delay must not exceed maximum delay");
+    constructor(address _admin) {
         admin = _admin;
     }
 

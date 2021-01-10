@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.3;
+pragma solidity ^0.7.0;
 
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
@@ -175,25 +175,25 @@ contract nWorkToken is ERC20 {
      /**
      * @notice Determine the prior number of votes for an account as of a block number
      * @dev Block number must be a finalized block or else this function will revert to prevent misinformation.
-     * @param _account The address of the account to check
-     * @param _blockNumber The block number to get the vote balance at
+     * @param account The address of the account to check
+     * @param blockNumber The block number to get the vote balance at
      * @return The number of votes the account had as of the given block
      */
-    function getPriorVotes(address _account, uint _blockNumber) public view returns (uint128) {
-        require(_blockNumber < block.number, "NWK::getPriorVotes: not yet determined");
+    function getPriorVotes(address account, uint blockNumber) public view returns (uint128) {
+        require(blockNumber < block.number, "NWK::getPriorVotes: not yet determined");
 
-        uint32 nCheckpoints = numCheckpoints[_account];
+        uint32 nCheckpoints = numCheckpoints[account];
         if (nCheckpoints == 0) {
             return 0;
         }
 
         // First check most recent balance
-        if (checkpoints[_account][nCheckpoints - 1].fromBlock <= _blockNumber) {
-            return checkpoints[_account][nCheckpoints - 1].votes;
+        if (checkpoints[account][nCheckpoints - 1].fromBlock <= blockNumber) {
+            return checkpoints[account][nCheckpoints - 1].votes;
         }
 
         // Next check implicit zero balance
-        if (checkpoints[_account][0].fromBlock > _blockNumber) {
+        if (checkpoints[account][0].fromBlock > blockNumber) {
             return 0;
         }
 
@@ -201,16 +201,16 @@ contract nWorkToken is ERC20 {
         uint32 upper = nCheckpoints - 1;
         while (upper > lower) {
             uint32 center = upper - (upper - lower) / 2; // ceil, avoiding overflow
-            Checkpoint memory cp = checkpoints[_account][center];
-            if (cp.fromBlock == _blockNumber) {
+            Checkpoint memory cp = checkpoints[account][center];
+            if (cp.fromBlock == blockNumber) {
                 return cp.votes;
-            } else if (cp.fromBlock < _blockNumber) {
+            } else if (cp.fromBlock < blockNumber) {
                 lower = center;
             } else {
                 upper = center - 1;
             }
         }
-        return checkpoints[_account][lower].votes;
+        return checkpoints[account][lower].votes;
     }
 
     function _writeCheckpoint(address delegatee, uint32 nCheckpoints, uint128 oldVotes, uint128 newVotes) internal {

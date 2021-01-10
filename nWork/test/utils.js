@@ -56,11 +56,16 @@ getCurrentEpochTime = () => {
 
 const DELAY = 60 * 60 * 24 * 2;
 
-const DEVAMT = 250000000;
+const toBN = web3.utils.toBN;
 
-const TREASURYAMT = 750000000; 
+// converts it to 18 decimal places
+const DEVAMT = web3.utils.toBN(web3.utils.toWei('250000000', 'ether'));
+
+// converts it to 18 decimal places
+const TREASURYAMT = web3.utils.toBN(web3.utils.toWei('750000000', 'ether')); 
 
 module.exports = {
+    toBN,
     shouldThrow,
     getCurrentEpochTime,
     advanceBlock,

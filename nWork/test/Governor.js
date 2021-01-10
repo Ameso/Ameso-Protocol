@@ -1,18 +1,10 @@
 const Governor = artifacts.require("Governor.sol");
 const nWorkToken = artifacts.require("nWorkToken.sol");
 const Treasury = artifacts.require("Treasury.sol");
-const NWorkApp = artifacts.require("Treasury.sol");
+const NWorkApp = artifacts.require("nWork.sol");
+const truffleAssert = require('truffle-assertions');
+const { DELAY, DEVAMT, TREASURYAMT } = require('./utils.js'); 
 
-async function shouldThrow(promise) {
-    try {
-        await promise;
-        assert(true);
-    }
-    catch (err) {
-        return;
-    }
-    assert(false, "The contract did not throw.");
-}
 
 contract("Governor", async addresses => {
     const [admin, user1, user2, user3, user4, _] = addresses;
@@ -21,23 +13,12 @@ contract("Governor", async addresses => {
     let treasury = null;
     let nWorkApp = null;
 
-    // number of tokens to give to devs
-    const devAmount = 250000000;
-
-    // number of tokens to give to treasury
-    const treasuryAmount = 750000000;
-
-    let totalSupply = devAmount + treasuryAmount;
-
     it('Can deploy nWorkToken', async () => {
-        let canMintTime = (parseInt(Date.now()/1000, 10)) + 1;
-        nWorkInstance = await nWorkToken.new(user1, user2, devAmount, treasuryAmount, canMintTime);
+        nWorkInstance = await nWorkToken.new(user1, user2, DEVAMT, TREASURYAMT, Date.now());
     });
 
     it('Can deploy treasury', async () => {
-        // The treasury contract needs the governance contract... So first set the initial admin to the admin address.
-        // Then use pendingAdmin to set the governor contract afterwards.
-        treasury = await Treasury.new(admin);
+        treasury = await Treasury.new(admin, DELAY);
     });
 
     it('Can deploy nWorkApp', async () => {
@@ -64,9 +45,11 @@ contract("Governor", async addresses => {
         // set the treasury's new admin to the governance contract
 
         // not proper way to do it, should raise an error
-        await shouldThrow(treasury.setPendingAdmin(user1, {from:treasury.address}));
-        await shouldThrow(treasury.setPendingAdmin(user1, {from:admin}));
-
+        await truffleAssert.fails(
+            treasury.setPendingAdmin(user1, {from:treasury.address}),
+            "sender account not recognized"
+        );
+ 
         // the governor needs to vote to approve
 
     });

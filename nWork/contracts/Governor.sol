@@ -22,6 +22,7 @@ contract Governor {
     function proposalThreshold() public pure returns (uint256) { return 500000; } // 0.5% of total supply
 
 
+
     // -- State --
 
     // The official record of all proposals ever proposed
@@ -43,6 +44,19 @@ contract Governor {
     NwkInterface public nwk;
 
     NwkCoreInterface public nwkApp;
+
+    // Possible states that a proposal may be in
+    enum ProposalState {
+        Pending,
+        Active,
+        Canceled,
+        Defeated,
+        Succeeded,
+        Queued,
+        Expired,
+        Executed
+    }
+
 
     // -- Events --
 
@@ -83,6 +97,12 @@ contract Governor {
         // The ordered list of calldata to be passed to each call
         bytes[] calldatas;
 
+        // The block at which voting begins: holders must delegate their votes prior to this block
+        uint startBlock;
+
+        // The block at which voting ends: votes must be cast prior to this block
+        uint endBlock;
+
         // Current number of votes in favor of this proposal
         uint256 forVotes;
 
@@ -108,7 +128,7 @@ contract Governor {
         bool support;
 
         // The number of votes the voter had, which were cast
-        uint96 votes;
+        uint256 votes;
     }
 
 
@@ -118,13 +138,102 @@ contract Governor {
         nwkApp = NwkCoreInterface(_nwkCore);
     }
 
+    /**
+     * @dev This function returns the status of the proposal
+     * @param proposalId The id of the proposal 
+     */
+    function state(uint256 proposalId) public view returns (ProposalState) {
+        require(proposalCount >= proposalId && proposalId > 0, "Governor::state: invalid proposal id");
+        Proposal storage proposal = proposals[proposalId];
+        if (proposal.canceled) {
+            return ProposalState.Canceled;
+        } else if (block.number <= proposal.startBlock) {
+            return ProposalState.Pending;
+        } else if (block.number <= proposal.endBlock) {
+            return ProposalState.Active;
+        } else if (proposal.forVotes <= proposal.againstVotes || proposal.forVotes < quorumVotes()) {
+            return ProposalState.Defeated;
+        } else if (proposal.eta == 0) {
+            return ProposalState.Succeeded;
+        } else if (proposal.executed) {
+            return ProposalState.Executed;
+        } else if (block.timestamp >= SafeMath.add(proposal.eta, treasury.GRACE_PERIOD())) {
+            return ProposalState.Expired;
+        } else {
+            return ProposalState.Queued;
+        }
+    }
+
     function propose(address[] memory targets, uint[] memory values, string[] memory signatures, bytes[] memory calldatas, string memory description) public returns (uint256) {
         require(nwk.getPriorVotes(msg.sender, SafeMath.sub(block.number, 1)) > proposalThreshold(), "Governor::propose: proposer votes below proposal threshold");
 		require(targets.length == values.length && targets.length == signatures.length && targets.length == calldatas.length, "Governor::propose: proposal function information arity mismatch");
+        
+        /*require(targets.length == values.length && targets.length == signatures.length && targets.length == calldatas.length, "GovernorAlpha::propose: proposal function information arity mismatch");
+        require(targets.length != 0, "GovernorAlpha::propose: must provide actions");
+        require(targets.length <= proposalMaxOperations(), "GovernorAlpha::propose: too many actions");
+
+        uint latestProposalId = latestProposalIds[msg.sender];
+        if (latestProposalId != 0) {
+          ProposalState proposersLatestProposalState = state(latestProposalId);
+          require(proposersLatestProposalState != ProposalState.Active, "GovernorAlpha::propose: one live proposal per proposer, found an already active proposal");
+          require(proposersLatestProposalState != ProposalState.Pending, "GovernorAlpha::propose: one live proposal per proposer, found an already pending proposal");
+        }
+
+        uint startBlock = add256(block.number, votingDelay());
+        uint endBlock = add256(startBlock, votingPeriod());
+
+        proposalCount++;
+        Proposal memory newProposal = Proposal({
+            id: proposalCount,
+            proposer: msg.sender,
+            eta: 0,
+            targets: targets,
+            values: values,
+            signatures: signatures,
+            calldatas: calldatas,
+            startBlock: startBlock,
+            endBlock: endBlock,
+            forVotes: 0,
+            againstVotes: 0,
+            canceled: false,
+            executed: false
+        });
+
+        proposals[newProposal.id] = newProposal;
+        latestProposalIds[newProposal.proposer] = newProposal.id;
+
+        emit ProposalCreated(newProposal.id, msg.sender, targets, values, signatures, calldatas, startBlock, endBlock, description);
+        return newProposal.id;
+        */
+    }
+
+    function castVote(uint256 proposalId, bool support) public {
+        return _castVote(msg.sender, proposalId, support);
+    }
+
+    function _castVote(address voter, uint proposalId, bool support) internal {
+        require(state(proposalId) == ProposalState.Active, "Governor::_castVote: voting is closed");
+        Proposal storage proposal = proposals[proposalId];
+        Receipt storage receipt = proposal.receipts[voter];
+        require(receipt.hasVoted == false, "Governor::_castVote: voter already voted");
+        uint256 votes = nwk.getPriorVotes(voter, proposal.startBlock);
+
+        if (support) {
+            proposal.forVotes = SafeMath.add(proposal.forVotes, votes);
+        } else {
+            proposal.againstVotes = SafeMath.add(proposal.againstVotes, votes);
+        }
+
+        receipt.hasVoted = true;
+        receipt.support = support;
+        receipt.votes = votes;
+
+        emit VoteCast(voter, proposalId, support, votes);
     }
 }
 
 interface TreasuryInterface {
+    function GRACE_PERIOD() external view returns (uint256);
     function executeTransaction(address target, uint256 value, string calldata signature, bytes calldata data, uint256 eta) external payable returns (bytes memory);
 }
 
@@ -133,5 +242,5 @@ interface NwkInterface {
 }
 
 interface NwkCoreInterface {
-
+    function takeJob() external view;
 }

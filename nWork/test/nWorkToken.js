@@ -147,7 +147,9 @@ contract("nWorkToken", async addresses => {
             // Checkpoint created from delegating
             let adminNumChkPt = await nWorkInstance.numCheckpoints(admin) 
             assert(adminNumChkPt.toString() === "1", `Incorrect number of checkpoints : ${adminNumChkPt.toString()}`)
-
+            let adminChkPt = await nWorkInstance.checkpoints(admin, 0)
+            assert(adminChkPt.votes.toString() === TREASURYAMT.toString(), `Incorrect number of votes delegated: ${adminChkPt.votes.toString()}`)
+            
             await revertToSnapShot(snapShotId.result)
         })
 
@@ -158,7 +160,7 @@ contract("nWorkToken", async addresses => {
 		
             let numChkPnt = await nWorkInstance.numCheckpoints(minter)
 
-
+            //////////// TO DO
         });
 
     })
@@ -175,8 +177,7 @@ contract("nWorkToken", async addresses => {
             let numVotes = await nWorkInstance.getPriorVotes(user2, newBlock.number - 1)
             assert(numVotes.toString() == "0", `Should be 0 initially. Received: ${numVotes.toString()}`)
 
-            let res = await nWorkInstance.numCheckpoints(user2)
-            let res2 = await nWorkInstance.checkpoints(user2, 0)
+            ////////// TO DO
         })
     }) 
 })

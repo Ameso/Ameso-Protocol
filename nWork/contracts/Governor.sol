@@ -14,12 +14,12 @@ contract Governor {
     /**
      * @dev the number of votes in support of a mint required in order for a quorum to be reached
      */
-    function quorumVotes() public pure returns (uint256) { return 30000000; } // 3% of total supply
+    function quorumVotes() public pure returns (uint256) { return 30_000_000e18; } // 3% of total supply
 
     /**
      * @dev the number of votes required in order for a voter to become a proposer
      */
-    function proposalThreshold() public pure returns (uint256) { return 500000; } // 0.5% of total supply
+    function proposalThreshold() public pure returns (uint256) { return 500_000e18; } // 0.5% of total supply
 
 
 

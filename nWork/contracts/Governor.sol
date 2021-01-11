@@ -8,19 +8,23 @@ import '@openzeppelin/contracts/math/SafeMath.sol';
  * @title nWork Governance contract
  * @dev All contracts that will be owned by a Governor entity should extend this contract.
  */
-contract Governor {
+contract Governor{
     using SafeMath for uint256;
 
-    /**
-     * @dev the number of votes in support of a mint required in order for a quorum to be reached
-     */
-    function quorumVotes() public pure returns (uint256) { return 30_000_000e18; } // 3% of total supply
+    /// @notice the number of votes in support of a mint required in order for a quorum to be reached
+    function quorumVotes() public pure returns (uint) { return 30_000_000e18; } // 3% of total supply
 
-    /**
-     * @dev the number of votes required in order for a voter to become a proposer
-     */
-    function proposalThreshold() public pure returns (uint256) { return 500_000e18; } // 0.5% of total supply
+    /// @notice the number of votes required in order for a voter to become a proposer
+    function proposalThreshold() public pure returns (uint) { return 1_000_000e18; } // 1% of total supply
 
+    /// @notice The maximum number of actions that can be included in a proposal
+    function proposalMaxOperations() public pure returns (uint) { return 10; } // 10 actions
+
+    /// @notice The delay before voting on a proposal may take place, once proposed
+    function votingDelay() public pure returns (uint) { return 1; } // 1 block
+
+    /// @notice The duration of voting on a proposal, in blocks
+    function votingPeriod() public pure returns (uint) { return 40_320; } // ~7 days in blocks (assuming 15s blocks)
 
 
     // -- State --
@@ -164,13 +168,21 @@ contract Governor {
         }
     }
 
+    /**
+     * @dev Creates a proposal
+     * @param targets addresses the proposal will target 
+     * @param values TO DO 
+     * @param signatures TO DO
+     * @param calldatas TO DO
+     * @param description TO DO
+     */
     function propose(address[] memory targets, uint[] memory values, string[] memory signatures, bytes[] memory calldatas, string memory description) public returns (uint256) {
         require(nwk.getPriorVotes(msg.sender, SafeMath.sub(block.number, 1)) > proposalThreshold(), "Governor::propose: proposer votes below proposal threshold");
 		require(targets.length == values.length && targets.length == signatures.length && targets.length == calldatas.length, "Governor::propose: proposal function information arity mismatch");
         
-        /*require(targets.length == values.length && targets.length == signatures.length && targets.length == calldatas.length, "GovernorAlpha::propose: proposal function information arity mismatch");
-        require(targets.length != 0, "GovernorAlpha::propose: must provide actions");
-        require(targets.length <= proposalMaxOperations(), "GovernorAlpha::propose: too many actions");
+        require(targets.length == values.length && targets.length == signatures.length && targets.length == calldatas.length, "Governor::propose: proposal function information arity mismatch");
+        require(targets.length != 0, "Governor::propose: must provide actions");
+        require(targets.length <= proposalMaxOperations(), "Governor::propose: too many actions");
 
         uint latestProposalId = latestProposalIds[msg.sender];
         if (latestProposalId != 0) {
@@ -179,32 +191,29 @@ contract Governor {
           require(proposersLatestProposalState != ProposalState.Pending, "GovernorAlpha::propose: one live proposal per proposer, found an already pending proposal");
         }
 
-        uint startBlock = add256(block.number, votingDelay());
-        uint endBlock = add256(startBlock, votingPeriod());
+        uint startBlock = SafeMath.add(block.number, votingDelay());
+        uint endBlock = SafeMath.add(startBlock, votingPeriod());
 
-        proposalCount++;
-        Proposal memory newProposal = Proposal({
-            id: proposalCount,
-            proposer: msg.sender,
-            eta: 0,
-            targets: targets,
-            values: values,
-            signatures: signatures,
-            calldatas: calldatas,
-            startBlock: startBlock,
-            endBlock: endBlock,
-            forVotes: 0,
-            againstVotes: 0,
-            canceled: false,
-            executed: false
-        });
+        Proposal storage newProposal = proposals[proposalCount++];
+        
+        newProposal.id = proposalCount;
+        newProposal.proposer = msg.sender;
+        newProposal.eta = 0;
+        newProposal.targets = targets;
+        newProposal.values = values;
+        newProposal.signatures = signatures;
+        newProposal.calldatas = calldatas;
+        newProposal.startBlock = startBlock;
+        newProposal.endBlock = endBlock;
+        newProposal.forVotes = 0;
+        newProposal.againstVotes = 0;
+        newProposal.canceled = false;
+        newProposal.executed = false;
 
-        proposals[newProposal.id] = newProposal;
         latestProposalIds[newProposal.proposer] = newProposal.id;
 
         emit ProposalCreated(newProposal.id, msg.sender, targets, values, signatures, calldatas, startBlock, endBlock, description);
         return newProposal.id;
-        */
     }
 
     function castVote(uint256 proposalId, bool support) public {

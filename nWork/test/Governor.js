@@ -59,9 +59,17 @@ contract("Governor", async addresses => {
             // Timelock (Treasury)
             let target = [treasury.address]
             let values = [0]
-            let signatures = ["abcd"]
             let calldatas = [web3.utils.asciiToHex('Test')]
             let description = "Trying to change admin of treasury (New governor). We will change the quorum votes in the new contract"
+
+			let signatures = [web3.eth.abi.encodeFunctionSignature({
+                name: 'setPendingAdmin',
+                type: 'function',
+                inputs: [{
+                    type: 'address',
+                    name: 'pendingAdmin_'
+                }]
+            })]
 
             let res = await governor.propose(target, values, signatures, calldatas, description, {from: user1})
 
@@ -75,7 +83,21 @@ contract("Governor", async addresses => {
             let numProp = await governor.proposalCount()
             assert(numProp.toString() === "1", `Incorrect proposal count: ${numProp.toString()}`)
 
-            tx = await governor.proposals(id.toNumber()-1)
+            // getting state of proposal that does not exist should fail
+            await truffleAssert.reverts(
+                governor.state(1000),
+                'Governor::state: invalid proposal id'
+            )
+
+            // user should not be able to send proposal again
+            res = await governor.propose(target, values, signatures, calldatas, description, {from: user1})
+            id = res.logs[0].args.id
+            console.log(id)
+
+            // the proposal should be accepting votes
+            let proState = await governor.state(firstProposalID)
+
+            console.log(proState.toString())
         })
     })
 
@@ -88,6 +110,10 @@ contract("Governor", async addresses => {
                 treasury.setPendingAdmin(user1, {from:treasury.address}),
                 "sender account not recognized"
             )
+
+            // firstProposalID should have the function signature to change the admin
+            
+            // vote for the proposal. Try those without any tokens
         })
     })
 })

@@ -8,7 +8,7 @@ contract Treasury is Timelock{
 
     using SafeMath for uint256;
 
-    constructor() Timelock() {
+    constructor(address _admin, uint _delay) Timelock(_admin, _delay) {
 
     }
 

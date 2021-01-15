@@ -168,13 +168,13 @@ contract Governor{
         }
     }
 
-    /**
+    /*
      * @dev Creates a proposal
-     * @param targets addresses the proposal will target 
-     * @param values TO DO 
-     * @param signatures TO DO
-     * @param calldatas TO DO
-     * @param description TO DO
+     * @param targets addresses of the contract(s) whom we will call their functions
+     * @param values amount of ether to pass to the targets?
+     * @param signatures bytes to   
+     * @param calldatas transaction data? 
+     * @param description proposal description
      */
     function propose(address[] memory targets, uint[] memory values, string[] memory signatures, bytes[] memory calldatas, string memory description) public returns (uint256) {
         require(nwk.getPriorVotes(msg.sender, SafeMath.sub(block.number, 1)) > proposalThreshold(), "Governor::propose: proposer votes below proposal threshold");

@@ -4,116 +4,90 @@ import { solidity } from "ethereum-waffle"
 import { DEVAMT, TREASURYAMT, DELAY, mineBlock } from "./utils";
 
 
-describe("Governor", async () => {
+describe("Governor", () => {
     const provider = waffle.provider
     let amesoInstance, governor, amesoApp, treasury
-    let AmesoABI, treasuryABI, governorABI, nWorkAppABI
-    let [admin, user1, user2, user3] = await ethers.getSigners()
+    let AmesoFactory, treasuryFactory, governorFactory, amesoFactory
+    let admin, user1, user2, user3
     let firstProposalID;
 
     describe('Deployment of contracts', () => {
+        it('Assign signers', async () => {
+            [admin, user1, user2, user3] = await ethers.getSigners()
+        })
+
         it('Can deploy AmesoToken', async () => {
             let latestBlock = await provider.getBlock('latest')
-            AmesoABI = await ethers.getContractFactory("AmesoToken")
-            amesoInstance = await AmesoABI.deploy(user1.address, user2.address, DEVAMT, TREASURYAMT, latestBlock + 60)
+            AmesoFactory = await ethers.getContractFactory("AmesoToken")
+            amesoInstance = await AmesoFactory.deploy(user1.address, user2.address, DEVAMT, TREASURYAMT, latestBlock.timestamp + 60)
         })
 
         it('Can deploy treasury', async () => {
-            treasuryABI = await ethers.getContractFactory("Treasury")
-            treasury = await treasuryABI.deploy(admin.address, DELAY)
+            treasuryFactory = await ethers.getContractFactory("Treasury")
+            treasury = await treasuryFactory.deploy(admin.address, DELAY)
         })
 
         it('Can deploy AmesoApp', async () => {
-            nWorkApp = await NWorkApp.new(treasury.address);
+            amesoFactory = await ethers.getContractFactory("Ameso")
+            amesoApp = await amesoFactory.deploy(treasury.address)
         })
 
         it('Can deploy governance contract', async () => {
-            governor = await Governor.new(treasury.address, nWorkInstance.address, nWorkApp.address)
+            governorFactory = await ethers.getContractFactory("Governor")
+            governor = await governorFactory.deploy(treasury.address, amesoInstance.address, amesoApp.address)
         })
     })
    
-    describe('Proper quorum and proposal thresholds', async () => {
-        /*
+    describe('Proper quorum and proposal thresholds', () => {
         it('Governance contract has the correct quorum: 30million', async () => {
-            let quorum = await governor.quorumVotes();
-
-            assert(quorum.toString() === web3.utils.toWei("30000000", "ether"), `Incorrect quorum amount: ${quorum.toString()}`)
+            let quorum = await governor.quorumVotes()
+            expect(quorum).to.be.equal(ethers.utils.parseEther("30000000"))
         })
 
         it('Governance contract has the correct proposal threshold', async () => {
             let threshold = await governor.proposalThreshold();
-
-            assert(threshold.toString() === web3.utils.toWei("1000000", "ether"), `Incorrect threshold: ${threshold.toString()}`);
-        })*/
+            expect(threshold).to.be.equal(ethers.utils.parseEther("1000000"))
+        })
     })
 
-    /*
-    describe('Create proposal', async () => {
+    describe('Create proposal', () => {
         it('Sending delegates and creating proposal', async () => {
             // use the dev account (user1)
             // dev account should have 250million coins
             // self delegate
-            let tx = await nWorkInstance.delegate(user1, {from: user1})
-            truffleAssert.eventEmitted(tx, 'DelegateChanged', (ev) => {
-                return ev.delegator == user1 && ev.fromDelegate == 0 && ev.toDelegate == user1
-            })
+            await expect(amesoInstance.connect(user1).delegate(user1.address))
+                .to.emit(amesoInstance, 'DelegateChanged')
+                .withArgs(user1.address, '0x0000000000000000000000000000000000000000', user1.address)
 
             // Timelock (Treasury)
             let target = [treasury.address]
             let values = [0]
-            let calldatas = [web3.utils.asciiToHex('Test')]
+            let calldatas = [user3.address]
             let description = "Trying to change admin of treasury (New governor). We will change the quorum votes in the new contract"
+            let signatures = ["setPendingAdmin(address)"]
 
-			let signatures = [web3.eth.abi.encodeFunctionSignature({
-                name: 'setPendingAdmin',
-                type: 'function',
-                inputs: [{
-                    type: 'address',
-                    name: 'pendingAdmin_'
-                }]
-            })]
-
-            let votingPeriod = await governor.votingPeriod()
-
-            let proposeTx = await governor.propose(target, values, signatures, calldatas, description, {from: user1})
-
-            truffleAssert.eventEmitted(proposeTx, 'ProposalCreated', (ev) => {
-                return ev.id == 1 && ev.proposer == user1 && ev.startBlock == proposeTx.receipt.blockNumber + 1 && ev.endBlock + votingPeriod
-            })
-
-            // should return id one
-            let id = proposeTx.logs[0].args.id
-            assert(id.toString() === "1", `Incorrect proposal id: ${id.toString()}`)
-            firstProposalID = id
+            await governor.connect(user1).propose(target, values, signatures, calldatas, description)
 
             // check the proposal is stored
             // there should only be one proposal so far
             let numProp = await governor.proposalCount()
-            assert(numProp.toString() === "1", `Incorrect proposal count: ${numProp.toString()}`)
+            expect(numProp).to.be.equal(1)
 
             // getting state of proposal that does not exist should fail
-            await truffleAssert.reverts(
-                governor.state(1000),
-                'Governor::state: invalid proposal id'
-            )
+            await expect(governor.state(1000))
+                .to.be.revertedWith('Governor::state: invalid proposal id')
 
             // user should not be able to send proposal again
-            res = await governor.propose(target, values, signatures, calldatas, description, {from: user1})
-            id = res.logs[0].args.id
-
-            res = await governor.latestProposalIds(user1)
-            //console.log(res.toString())
-
-            // the proposal should be accepting votes
-            let proposalState = await governor.state(firstProposalID)
-            let proposalState2 = await governor.state(2)
-
-            //console.log(proposalState.toString(), proposalState2.toString())
-
-            let tmp = await governor.proposals(0)
+            await expect(governor.connect(user1).propose(target, values, signatures, calldatas, description))
+                .to.be.revertedWith('Governor::propose: one live proposal per proposer, found an already pending proposal')
+         
+            // increment the block so we can start accepting votes
+            let latestBlock = await provider.getBlock('latest')
+            await mineBlock(provider, latestBlock.timestamp + 15)
         })
     })
 
+    /*
     describe('Testing voting feature', async () => {
         it('Test governance voting feature by changing admin for treasury to governance contract', async () => {
             // set the treasury's new admin to the governance contract

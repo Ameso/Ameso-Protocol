@@ -80,9 +80,6 @@ contract Governor{
     // An event emitted when a proposal has been executed in the Timelock
     event ProposalExecuted(uint256 id);
 
-    // DEBUG
-    event Debug(uint proposalState);
-
     struct Proposal {
         // Unique id for looking up a proposal
         uint256 id;
@@ -139,7 +136,6 @@ contract Governor{
         uint256 votes;
     }
 
-
     constructor(address _treasury, address _ams, address _amsCore) {
         treasury = TreasuryInterface(_treasury);
         ams = AmsInterface(_ams);
@@ -189,17 +185,17 @@ contract Governor{
 
         uint latestProposalId = latestProposalIds[msg.sender];
         if (latestProposalId != 0) {
-          ProposalState proposersLatestProposalState = state(latestProposalId);
-          require(proposersLatestProposalState != ProposalState.Active, "GovernorAlpha::propose: one live proposal per proposer, found an already active proposal");
-          require(proposersLatestProposalState != ProposalState.Pending, "GovernorAlpha::propose: one live proposal per proposer, found an already pending proposal");
+            ProposalState proposersLatestProposalState = state(latestProposalId);
+            require(proposersLatestProposalState != ProposalState.Active, "Governor::propose: one live proposal per proposer, found an already active proposal");
+            require(proposersLatestProposalState != ProposalState.Pending, "Governor::propose: one live proposal per proposer, found an already pending proposal");
         }
 
         uint startBlock = SafeMath.add(block.number, votingDelay());
         uint endBlock = SafeMath.add(startBlock, votingPeriod());
-        console.log("teest");
 
-        Proposal storage newProposal = proposals[proposalCount++];
-        
+        proposalCount++;
+        Proposal storage newProposal = proposals[proposalCount];
+
         newProposal.id = proposalCount;
         newProposal.proposer = msg.sender;
         newProposal.eta = 0;
@@ -217,7 +213,6 @@ contract Governor{
         latestProposalIds[newProposal.proposer] = newProposal.id;
 
         emit ProposalCreated(newProposal.id, msg.sender, targets, values, signatures, calldatas, startBlock, endBlock, description);
-
         return newProposal.id;
     }
 

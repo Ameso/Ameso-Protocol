@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.7.3;
 
 import '@openzeppelin/contracts/math/SafeMath.sol';
 
-contract nWork {
+contract Ameso {
     using SafeMath for uint256;
     
     mapping (string => Job) jobs;
@@ -95,7 +94,7 @@ contract nWork {
 
     function payReviewers() public {
         // Can only be called by the treasury
-        require(msg.sender == treasury, "nWork::payReviewers: only treasury can call this function");
+        require(msg.sender == treasury, "Ameso::payReviewers: only treasury can call this function");
 
         // Check 
     }

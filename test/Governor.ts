@@ -1,33 +1,35 @@
 import { ethers, waffle } from "hardhat"
 import { expect, use } from "chai"
 import { solidity } from "ethereum-waffle"
-import { DEVAMT, TREASURYAMT, mineBlock } from "./utils";
+import { DEVAMT, TREASURYAMT, DELAY, mineBlock } from "./utils";
 
 
-describe("Governor", () => {
+describe("Governor", async () => {
     const provider = waffle.provider
-    let amesoInstance, governor, nWorkApp
-    let AmesoABI, governorABI, nWorkAppABI
-    let admin, user1, user2, user3, minter
+    let amesoInstance, governor, amesoApp, treasury
+    let AmesoABI, treasuryABI, governorABI, nWorkAppABI
+    let [admin, user1, user2, user3] = await ethers.getSigners()
     let firstProposalID;
 
     describe('Deployment of contracts', () => {
-        /*
-        it('Can deploy nWorkToken', async () => {
-            amesoInstance = await AmesoToken.new(user1, user2, DEVAMT, TREASURYAMT, getCurrentEpochTime())
+        it('Can deploy AmesoToken', async () => {
+            let latestBlock = await provider.getBlock('latest')
+            AmesoABI = await ethers.getContractFactory("AmesoToken")
+            amesoInstance = await AmesoABI.deploy(user1.address, user2.address, DEVAMT, TREASURYAMT, latestBlock + 60)
         })
 
         it('Can deploy treasury', async () => {
-            treasury = await Treasury.new(admin, DELAY);
+            treasuryABI = await ethers.getContractFactory("Treasury")
+            treasury = await treasuryABI.deploy(admin.address, DELAY)
         })
 
-        it('Can deploy nWorkApp', async () => {
+        it('Can deploy AmesoApp', async () => {
             nWorkApp = await NWorkApp.new(treasury.address);
         })
 
         it('Can deploy governance contract', async () => {
             governor = await Governor.new(treasury.address, nWorkInstance.address, nWorkApp.address)
-        })*/
+        })
     })
    
     describe('Proper quorum and proposal thresholds', async () => {
@@ -45,9 +47,9 @@ describe("Governor", () => {
         })*/
     })
 
+    /*
     describe('Create proposal', async () => {
         it('Sending delegates and creating proposal', async () => {
-            /*
             // use the dev account (user1)
             // dev account should have 250million coins
             // self delegate

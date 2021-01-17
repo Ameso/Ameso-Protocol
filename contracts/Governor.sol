@@ -12,6 +12,8 @@ import "hardhat/console.sol";
 contract Governor{
     using SafeMath for uint256;
 
+    string public constant name = "Ameso Governor";
+
     /// @notice the number of votes in support of a mint required in order for a quorum to be reached
     function quorumVotes() public pure returns (uint) { return 30_000_000e18; } // 3% of total supply
 
@@ -26,7 +28,7 @@ contract Governor{
 
     /// @notice The duration of voting on a proposal, in blocks
     function votingPeriod() public pure returns (uint) { return 40_320; } // ~7 days in blocks (assuming 15s blocks)
-
+    //function votingPeriod() public pure returns (uint) { return 10; } // for testing 
 
     // -- State --
 
@@ -143,12 +145,131 @@ contract Governor{
     }
 
     /**
-     * @dev This function returns the status of the proposal
-     * @param proposalId The id of the proposal 
+     * @dev Creates a proposal
+     * @param _targets addresses of the contract(s) whom we will call their functions
+     * @param _values amount of ether to pass to the targets?
+     * @param _signatures bytes to   
+     * @param _calldatas transaction data? 
+     * @param _description proposal description
      */
-    function state(uint256 proposalId) public view returns (ProposalState) {
-        require(proposalCount >= proposalId && proposalId > 0, "Governor::state: invalid proposal id");
-        Proposal storage proposal = proposals[proposalId];
+    function propose(
+        address[] memory _targets,
+        uint256[] memory _values,
+        string[] memory _signatures,
+        bytes[] memory _calldatas,
+        string memory _description
+    ) public returns (uint256) {
+        require(ams.getPriorVotes(msg.sender, SafeMath.sub(block.number, 1)) > proposalThreshold(), "Governor::propose: proposer votes below proposal threshold");
+        require(_targets.length == _values.length && _targets.length == _signatures.length && _targets.length == _calldatas.length, "Governor::propose: proposal function information arity mismatch");
+        require(_targets.length != 0, "Governor::propose: must provide actions");
+        require(_targets.length <= proposalMaxOperations(), "Governor::propose: too many actions");
+
+        uint256 latestProposalId = latestProposalIds[msg.sender];
+        if (latestProposalId != 0) {
+            ProposalState proposersLatestProposalState = state(latestProposalId);
+            require(proposersLatestProposalState != ProposalState.Active, "Governor::propose: one live proposal per proposer, found an already active proposal");
+            require(proposersLatestProposalState != ProposalState.Pending, "Governor::propose: one live proposal per proposer, found an already pending proposal");
+        }
+
+        uint startBlock = SafeMath.add(block.number, votingDelay());
+        uint endBlock = SafeMath.add(startBlock, votingPeriod());
+
+        proposalCount++;
+        Proposal storage newProposal = proposals[proposalCount];
+
+        newProposal.id = proposalCount;
+        newProposal.proposer = msg.sender;
+        newProposal.eta = 0;
+        newProposal.targets = _targets;
+        newProposal.values = _values;
+        newProposal.signatures = _signatures;
+        newProposal.calldatas = _calldatas;
+        newProposal.startBlock = startBlock;
+        newProposal.endBlock = endBlock;
+        newProposal.forVotes = 0;
+        newProposal.againstVotes = 0;
+        newProposal.canceled = false;
+        newProposal.executed = false;
+
+        latestProposalIds[newProposal.proposer] = newProposal.id;
+
+        emit ProposalCreated(newProposal.id, msg.sender, _targets, _values, _signatures, _calldatas, startBlock, endBlock, _description);
+        return newProposal.id;
+    }
+
+    /**
+     * @dev Queue successful proposal for execution
+     * @param _proposalId The id of the proposal to be executed
+     */
+    function queue(uint256 _proposalId) public {
+        require(state(_proposalId) == ProposalState.Succeeded, "Governor::queue: proposal can only be queued if it is succeeded");
+        Proposal storage proposal = proposals[_proposalId];
+        uint256 eta = SafeMath.add(block.timestamp, treasury.delay());
+        for (uint256 i = 0; i < proposal.targets.length; i++) {
+            _queueOrRevert(proposal.targets[i], proposal.values[i], proposal.signatures[i], proposal.calldatas[i], eta);
+        }
+        proposal.eta = eta;
+        emit ProposalQueued(_proposalId, eta);
+    }
+
+    function _queueOrRevert(
+        address _target,
+        uint256 _value,
+        string memory _signature,
+        bytes memory _data,
+        uint256 _eta
+    ) internal {
+        require(!treasury.queuedTransactions(keccak256(abi.encode(_target, _value, _signature, _data, _eta))), 
+            "Governor::_queueOrRevert: proposal action already queued at eta");
+        treasury.queueTransaction(_target, _value, _signature, _data, _eta);
+    }
+
+    function cancel(uint256 _proposalId) public {
+        ProposalState state = state(_proposalId);
+        require(state != ProposalState.Executed, "GovernorAlpha::cancel: cannot cancel executed proposal");
+
+        Proposal storage proposal = proposals[_proposalId];
+        require(ams.getPriorVotes(proposal.proposer, SafeMath.sub(block.number, 1)) < proposalThreshold(), "GovernorAlpha::cancel: proposer above threshold");
+
+        proposal.canceled = true;
+        for (uint256 i = 0; i < proposal.targets.length; i++) {
+            treasury.cancelTransaction(proposal.targets[i], proposal.values[i], proposal.signatures[i], proposal.calldatas[i], proposal.eta);
+        }
+
+        emit ProposalCanceled(_proposalId);
+    }
+
+    function getActions(uint256 _proposalId) 
+        public 
+        view 
+        returns (
+            address[] memory targets,
+            uint256[] memory values,
+            string[] memory signatures,
+            bytes[] memory calldatas
+        )
+    {
+        Proposal storage p = proposals[_proposalId];
+        return (p.targets, p.values, p.signatures, p.calldatas);
+    }
+
+    function getReceipt(
+        uint _proposalId,
+        address _voter
+    ) public 
+        view 
+        returns (Receipt memory)
+    {
+        return proposals[_proposalId].receipts[_voter];
+    }
+
+    /**
+     * @dev This function returns the status of the proposal
+     * @param _proposalId The id of the proposal 
+     */
+    function state(uint256 _proposalId) public view returns (ProposalState) {
+        require(proposalCount >= _proposalId && _proposalId > 0, "Governor::state: invalid proposal id");
+        Proposal storage proposal = proposals[_proposalId];
 
         if (proposal.canceled) {
             return ProposalState.Canceled;
@@ -169,81 +290,66 @@ contract Governor{
         }
     }
 
-    /*
-     * @dev Creates a proposal
-     * @param targets addresses of the contract(s) whom we will call their functions
-     * @param values amount of ether to pass to the targets?
-     * @param signatures bytes to   
-     * @param calldatas transaction data? 
-     * @param description proposal description
+    /**
+     *
      */
-    function propose(address[] memory targets, uint[] memory values, string[] memory signatures, bytes[] memory calldatas, string memory description) public returns (uint256) {
-        require(ams.getPriorVotes(msg.sender, SafeMath.sub(block.number, 1)) > proposalThreshold(), "Governor::propose: proposer votes below proposal threshold");
-        require(targets.length == values.length && targets.length == signatures.length && targets.length == calldatas.length, "Governor::propose: proposal function information arity mismatch");
-        require(targets.length != 0, "Governor::propose: must provide actions");
-        require(targets.length <= proposalMaxOperations(), "Governor::propose: too many actions");
-
-        uint latestProposalId = latestProposalIds[msg.sender];
-        if (latestProposalId != 0) {
-            ProposalState proposersLatestProposalState = state(latestProposalId);
-            require(proposersLatestProposalState != ProposalState.Active, "Governor::propose: one live proposal per proposer, found an already active proposal");
-            require(proposersLatestProposalState != ProposalState.Pending, "Governor::propose: one live proposal per proposer, found an already pending proposal");
-        }
-
-        uint startBlock = SafeMath.add(block.number, votingDelay());
-        uint endBlock = SafeMath.add(startBlock, votingPeriod());
-
-        proposalCount++;
-        Proposal storage newProposal = proposals[proposalCount];
-
-        newProposal.id = proposalCount;
-        newProposal.proposer = msg.sender;
-        newProposal.eta = 0;
-        newProposal.targets = targets;
-        newProposal.values = values;
-        newProposal.signatures = signatures;
-        newProposal.calldatas = calldatas;
-        newProposal.startBlock = startBlock;
-        newProposal.endBlock = endBlock;
-        newProposal.forVotes = 0;
-        newProposal.againstVotes = 0;
-        newProposal.canceled = false;
-        newProposal.executed = false;
-
-        latestProposalIds[newProposal.proposer] = newProposal.id;
-
-        emit ProposalCreated(newProposal.id, msg.sender, targets, values, signatures, calldatas, startBlock, endBlock, description);
-        return newProposal.id;
+    function castVote(uint256 _proposalId, bool _support) public {
+        return _castVote(msg.sender, _proposalId, _support);
+    }
+    
+    function castVoteBySig(
+        uint _proposalId,
+        bool _support,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) public {
+        bytes32 domainSeparator = keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(name)), _getChainId(), address(this)));
+        bytes32 structHash = keccak256(abi.encode(BALLOT_TYPEHASH, _proposalId, _support));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+        address signatory = ecrecover(digest, _v, _r, _s);
+        require(signatory != address(0), "Governor::castVoteBySig: invalid signature");
+        return _castVote(signatory, _proposalId, _support);
     }
 
-    function castVote(uint256 proposalId, bool support) public {
-        return _castVote(msg.sender, proposalId, support);
-    }
-
-    function _castVote(address voter, uint proposalId, bool support) internal {
-        require(state(proposalId) == ProposalState.Active, "Governor::_castVote: voting is closed");
-        Proposal storage proposal = proposals[proposalId];
-        Receipt storage receipt = proposal.receipts[voter];
+    function _castVote(
+        address _voter,
+        uint _proposalId,
+        bool _support
+    ) internal {
+        require(state(_proposalId) == ProposalState.Active, "Governor::_castVote: voting is closed");
+        Proposal storage proposal = proposals[_proposalId];
+        Receipt storage receipt = proposal.receipts[_voter];
         require(receipt.hasVoted == false, "Governor::_castVote: voter already voted");
-        uint256 votes = ams.getPriorVotes(voter, proposal.startBlock);
+        uint256 votes = ams.getPriorVotes(_voter, proposal.startBlock);
 
-        if (support) {
+        if (_support) {
             proposal.forVotes = SafeMath.add(proposal.forVotes, votes);
         } else {
             proposal.againstVotes = SafeMath.add(proposal.againstVotes, votes);
         }
 
         receipt.hasVoted = true;
-        receipt.support = support;
+        receipt.support = _support;
         receipt.votes = votes;
 
-        emit VoteCast(voter, proposalId, support, votes);
+        emit VoteCast(_voter, _proposalId, _support, votes);
+    }
+
+    function _getChainId() internal pure returns (uint) {
+        uint chainId;
+        assembly { chainId := chainid() }
+        return chainId;
     }
 }
 
 interface TreasuryInterface {
+    function delay() external view returns (uint256);
     function GRACE_PERIOD() external view returns (uint256);
+    function queuedTransactions(bytes32 hash) external view returns (bool);
+    function queueTransaction(address target, uint256 value, string calldata signature, bytes calldata data, uint256 eta) external returns (bytes32);
     function executeTransaction(address target, uint256 value, string calldata signature, bytes calldata data, uint256 eta) external payable returns (bytes memory);
+    function cancelTransaction(address target, uint256 value, string calldata signature, bytes calldata data, uint256 eta) external;
 }
 
 interface AmsInterface {

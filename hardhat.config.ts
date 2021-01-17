@@ -6,6 +6,9 @@ export default {
     localhost: {
       url: "http://localhost:7545"
     }
+  },
+  mocha: {
+    timeout: 40000
   }
 }
 

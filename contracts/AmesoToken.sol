@@ -56,7 +56,7 @@ contract AmesoToken {
     // EIP-20 token decimals for this token
     uint8 public constant decimals = 18;
 
-    uint256 public totalSupply = 1_000_000_000e18; // 1 billion NWK 
+    uint256 public totalSupply = 1_000_000_000e18; // 1 billion AMS 
 
     bytes32 private DOMAIN_SEPARATOR;
 
@@ -101,7 +101,7 @@ contract AmesoToken {
      * @param _mintingAllowedAfter The timestamp after which minting may occur
      */
     constructor(address _account, address _minter, uint256 _initialSupplyDev, uint256 _initialSupplyMinter, uint256 _mintingAllowedAfter) {
-        require(_mintingAllowedAfter >= block.timestamp, "NWK::constructor: minting can only begin after deployment");
+        require(_mintingAllowedAfter >= block.timestamp, "AMS::constructor: minting can only begin after deployment");
 
         balances[_account] = _initialSupplyDev;
         emit Transfer(address(0), _account, _initialSupplyDev);
@@ -120,7 +120,7 @@ contract AmesoToken {
      * @param _minter The address of the new minter
      */
     function setMinter(address _minter) external {
-        require(msg.sender == minter, "NWK::setMinter: only the minter can change the minter address");
+        require(msg.sender == minter, "AMS::setMinter: only the minter can change the minter address");
         emit MinterChanged(minter, _minter);
         minter = _minter;
     }
@@ -131,15 +131,15 @@ contract AmesoToken {
      * @param _amount The number of tokens to be minted
      */
     function mint(address _dst, uint256 _amount) external {
-        require(msg.sender == minter, "NWK::mint: only the treasury can mint");
-        require(block.timestamp >= mintingAllowedAfter, "NWK::mint: minting not allowed yet");
-        require(_dst != address(0), "NWK::mint: cannot transfer to the zero address");
+        require(msg.sender == minter, "AMS::mint: only the treasury can mint");
+        require(block.timestamp >= mintingAllowedAfter, "AMS::mint: minting not allowed yet");
+        require(_dst != address(0), "AMS::mint: cannot transfer to the zero address");
 
         // record the mint
         mintingAllowedAfter = SafeMath.add(block.timestamp, minimumTimeBetweenMints);
 
         // mint the amount
-        require(_amount <= SafeMath.div(SafeMath.mul(totalSupply, mintCap), 100), "NWK::mint: exceeded mint cap");
+        require(_amount <= SafeMath.div(SafeMath.mul(totalSupply, mintCap), 100), "AMS::mint: exceeded mint cap");
         totalSupply = SafeMath.add(totalSupply, _amount);
 
         // transfer the amount to the recipient
@@ -190,9 +190,9 @@ contract AmesoToken {
         bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, _owner, _spender, _value, nonces[_owner]++, _deadline));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
         address recoveredAddress = ecrecover(digest, _v, _r, _s);
-        require(_owner != address(0), "NWK::permit: invalid signature");
-        require(_owner == recoveredAddress, "NWK::permit: unauthorized");
-        require(_deadline == 0 || block.timestamp <= _deadline, "NWK::permit: expired permit");
+        require(_owner != address(0), "AMS::permit: invalid signature");
+        require(_owner == recoveredAddress, "AMS::permit: unauthorized");
+        require(_deadline == 0 || block.timestamp <= _deadline, "AMS::permit: expired permit");
 
         allowances[_owner][_spender] = _value;
 
@@ -258,7 +258,7 @@ contract AmesoToken {
      * @return The number of votes the account had as of the given block
      */
     function getPriorVotes(address _account, uint _blockNumber) public view returns (uint256) {
-        require(_blockNumber < block.number, "NWK::getPriorVotes: not yet determined");
+        require(_blockNumber < block.number, "AMS::getPriorVotes: not yet determined");
  
         uint256 nCheckpoints = numCheckpoints[_account];
 
@@ -303,8 +303,8 @@ contract AmesoToken {
     }
 
     function _transferTokens(address src, address dst, uint256 amount) internal {
-        require(src != address(0), "NWK::_transferTokens: cannot transfer from the zero address");
-        require(dst != address(0), "NWK::_transferTokens: cannot transfer to the zero address");
+        require(src != address(0), "AMS::_transferTokens: cannot transfer from the zero address");
+        require(dst != address(0), "AMS::_transferTokens: cannot transfer to the zero address");
 
         balances[src] = SafeMath.sub(balances[src], amount);
         balances[dst] = SafeMath.add(balances[dst], amount);

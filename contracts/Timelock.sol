@@ -23,7 +23,6 @@ contract Timelock {
 
     mapping (bytes32 => bool) public queuedTransactions;
 
-
     constructor(address admin_, uint delay_) public {
         require(delay_ >= MINIMUM_DELAY, "Timelock::constructor: Delay must exceed minimum delay.");
         require(delay_ <= MAXIMUM_DELAY, "Timelock::setDelay: Delay must not exceed maximum delay.");
@@ -56,18 +55,23 @@ contract Timelock {
     function setPendingAdmin(address pendingAdmin_) public {
         require(msg.sender == address(this), "Timelock::setPendingAdmin: Call must come from Timelock.");
         pendingAdmin = pendingAdmin_;
-
         emit NewPendingAdmin(pendingAdmin);
     }
 
-    function queueTransaction(address target, uint value, string memory signature, bytes memory data, uint eta) public returns (bytes32) {
+    function queueTransaction(
+        address _target, 
+        uint _value,
+        string memory _signature,
+        bytes memory _data,
+        uint _eta
+    ) public returns (bytes32) {
         require(msg.sender == admin, "Timelock::queueTransaction: Call must come from admin.");
-        require(eta >= getBlockTimestamp().add(delay), "Timelock::queueTransaction: Estimated execution block must satisfy delay.");
+        require(_eta >= getBlockTimestamp().add(delay), "Timelock::queueTransaction: Estimated execution block must satisfy delay.");
 
-        bytes32 txHash = keccak256(abi.encode(target, value, signature, data, eta));
+        bytes32 txHash = keccak256(abi.encode(_target, _value, _signature, _data, _eta));
         queuedTransactions[txHash] = true;
 
-        emit QueueTransaction(txHash, target, value, signature, data, eta);
+        emit QueueTransaction(txHash, _target, _value, _signature, _data, _eta);
         return txHash;
     }
 
@@ -80,29 +84,39 @@ contract Timelock {
         emit CancelTransaction(txHash, target, value, signature, data, eta);
     }
 
-    function executeTransaction(address target, uint value, string memory signature, bytes memory data, uint eta) public payable returns (bytes memory) {
+    function executeTransaction(
+        address _target,
+        uint _value,
+        string memory _signature,
+        bytes memory _data,
+        uint _eta
+    ) public
+        payable
+        returns (bytes memory)
+    {
         require(msg.sender == admin, "Timelock::executeTransaction: Call must come from admin.");
 
-        bytes32 txHash = keccak256(abi.encode(target, value, signature, data, eta));
+        bytes32 txHash = keccak256(abi.encode(_target, _value, _signature, _data, _eta));
         require(queuedTransactions[txHash], "Timelock::executeTransaction: Transaction hasn't been queued.");
-        require(getBlockTimestamp() >= eta, "Timelock::executeTransaction: Transaction hasn't surpassed time lock.");
-        require(getBlockTimestamp() <= eta.add(GRACE_PERIOD), "Timelock::executeTransaction: Transaction is stale.");
+        require(getBlockTimestamp() >= _eta, "Timelock::executeTransaction: Transaction hasn't surpassed time lock.");
+        require(getBlockTimestamp() <= _eta.add(GRACE_PERIOD), "Timelock::executeTransaction: Transaction is stale.");
 
         queuedTransactions[txHash] = false;
 
         bytes memory callData;
 
-        if (bytes(signature).length == 0) {
-            callData = data;
+        if (bytes(_signature).length == 0) {
+            callData = _data;
         } else {
-            callData = abi.encodePacked(bytes4(keccak256(bytes(signature))), data);
+            callData = abi.encodePacked(bytes4(keccak256(bytes(_signature))), _data);
         }
 
         // solium-disable-next-line security/no-call-value
-        (bool success, bytes memory returnData) = target.call{value:value}(callData);
+        (bool success, bytes memory returnData) = _target.call(callData);
+
         require(success, "Timelock::executeTransaction: Transaction execution reverted.");
 
-        emit ExecuteTransaction(txHash, target, value, signature, data, eta);
+        emit ExecuteTransaction(txHash, _target, _value, _signature, _data, _eta);
 
         return returnData;
     }

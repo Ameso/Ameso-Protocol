@@ -9,7 +9,8 @@ describe("Governor", () => {
     let amesoInstance, governor, amesoApp, treasury
     let AmesoFactory, treasuryFactory, governorFactory, amesoFactory
     let admin, user1, user2, user3
-    let firstProposalID = 1;
+    let firstProposalID = 1
+    const abi = new ethers.utils.AbiCoder()
 
     describe('Deployment of contracts', () => {
         it('Assign signers', async () => {
@@ -19,21 +20,33 @@ describe("Governor", () => {
         it('Can deploy AmesoToken', async () => {
             let latestBlock = await provider.getBlock('latest')
             AmesoFactory = await ethers.getContractFactory("AmesoToken")
+
+            // ADMIN NONCE 1
             amesoInstance = await AmesoFactory.deploy(user1.address, user2.address, DEVAMT, TREASURYAMT, latestBlock.timestamp + 60)
         })
 
         it('Can deploy treasury', async () => {
+            // figure out governor contract's future contract address
+            // http://ethereum.stackexchange.com/questions/760/how-is-the-address-of-an-ethereum-contract-computed
+
+            let governorAddress = ethers.utils.getContractAddress({ from: admin.address, nonce: 3 })
             treasuryFactory = await ethers.getContractFactory("Treasury")
-            treasury = await treasuryFactory.deploy(admin.address, DELAY)
-        })
+
+            // ADMIN NONCE 2
+            treasury = await treasuryFactory.deploy(governorAddress, DELAY)
+            await treasury.setPending
+       })
 
         it('Can deploy AmesoApp', async () => {
             amesoFactory = await ethers.getContractFactory("Ameso")
+
+            // ADMIN NONCE 3
             amesoApp = await amesoFactory.deploy(treasury.address)
         })
 
         it('Can deploy governance contract', async () => {
             governorFactory = await ethers.getContractFactory("Governor")
+
             governor = await governorFactory.deploy(treasury.address, amesoInstance.address, amesoApp.address)
         })
     })
@@ -62,9 +75,9 @@ describe("Governor", () => {
             // Timelock (Treasury)
             let target = [treasury.address]
             let values = [0]
-            let calldatas = [user3.address]
-            let description = "Trying to change admin of treasury (New governor). We will change the quorum votes in the new contract"
-            let signatures = ["setPendingAdmin(address)"]
+            let calldatas = [abi.encode(["uint256"], [DELAY + 1])]
+            let description = "Trying to change delay"
+            let signatures = ["setDelay(uint256)"]
 
             await governor.connect(user1).propose(target, values, signatures, calldatas, description)
 
@@ -161,7 +174,22 @@ describe("Governor", () => {
 
     describe("Execution of successful proposal", () => {
         it('Queue the successful proposal', async () => {
-            
+            await governor.connect(user1).queue(firstProposalID)
+        })
+
+        it('Execute a failed transaction', async () => {
+
+        })
+
+        it('Execute the queued transaction', async () => {
+            let res = await treasury.delay()
+            let proposal = await governor.proposals(firstProposalID)
+            await mineBlock(provider, proposal.eta.toNumber() + 10)
+            await governor.connect(user1).execute(firstProposalID)
+
+            // should have executed setDelay to 1 second
+            expect(await treasury.delay())
+                .to.be.equal(DELAY + 1)
         })
     })
 })

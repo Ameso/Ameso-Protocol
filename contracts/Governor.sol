@@ -3,7 +3,6 @@ pragma solidity ^0.7.3;
 pragma experimental ABIEncoderV2;
 
 import '@openzeppelin/contracts/math/SafeMath.sol';
-import "hardhat/console.sol";
 
 /**
  * @title Ameso Governance contract
@@ -28,7 +27,6 @@ contract Governor{
 
     /// @notice The duration of voting on a proposal, in blocks
     function votingPeriod() public pure returns (uint) { return 40_320; } // ~7 days in blocks (assuming 15s blocks)
-    //function votingPeriod() public pure returns (uint) { return 10; } // for testing 
 
     // -- State --
 
@@ -224,6 +222,16 @@ contract Governor{
         treasury.queueTransaction(_target, _value, _signature, _data, _eta);
     }
 
+    function execute(uint _proposalId) public payable {
+        require(state(_proposalId) == ProposalState.Queued, "Governor::execute: proposal can only be executed if it is queued");
+        Proposal storage proposal = proposals[_proposalId];
+        proposal.executed = true;
+        for (uint i = 0; i < proposal.targets.length; i++) {
+            treasury.executeTransaction{value: proposal.values[i]}(proposal.targets[i], proposal.values[i], proposal.signatures[i], proposal.calldatas[i], proposal.eta);
+        }
+        emit ProposalExecuted(_proposalId);
+    }
+
     function cancel(uint256 _proposalId) public {
         ProposalState state = state(_proposalId);
         require(state != ProposalState.Executed, "GovernorAlpha::cancel: cannot cancel executed proposal");
@@ -346,6 +354,7 @@ contract Governor{
 interface TreasuryInterface {
     function delay() external view returns (uint256);
     function GRACE_PERIOD() external view returns (uint256);
+    function acceptAdmin() external;
     function queuedTransactions(bytes32 hash) external view returns (bool);
     function queueTransaction(address target, uint256 value, string calldata signature, bytes calldata data, uint256 eta) external returns (bytes32);
     function executeTransaction(address target, uint256 value, string calldata signature, bytes calldata data, uint256 eta) external payable returns (bytes memory);

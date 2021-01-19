@@ -12,7 +12,7 @@ describe('Test Ameso Token', () => {
     let admin, user1, user2, user3, minter
 
     describe('Basic deployment', () => {
-        it('Can deploy nWork token', async () => {
+        it('Can deploy Ameso token', async () => {
             [admin, user1, user2, user3] = await ethers.getSigners()
             amesoABI = await ethers.getContractFactory("AmesoToken")
             let latestBlock = await provider.getBlock('latest')
@@ -34,7 +34,7 @@ describe('Test Ameso Token', () => {
             // try to mint even though address is not minter
             // deployer (admin in this case) isn't the one that becomes the minter by default
             await expect(amesoInstance.mint(user1.address, 10))
-                .to.be.revertedWith("NWK::mint: only the treasury can mint")
+                .to.be.revertedWith("AMS::mint: only the treasury can mint")
 
             await amesoInstance.connect(minter).mint(minter.address, 1)
             let newTreasuryBalance = await amesoInstance.balanceOf(minter.address)
@@ -42,7 +42,7 @@ describe('Test Ameso Token', () => {
 
             // should not allow mint again. Too soon
             await expect(amesoInstance.connect(minter).mint(minter.address, 1))
-                .to.be.revertedWith("NWK::mint: minting not allowed yet")
+                .to.be.revertedWith("AMS::mint: minting not allowed yet")
         })
 
         it('Cannot mint too much tokens', async () => {
@@ -52,7 +52,7 @@ describe('Test Ameso Token', () => {
 
             // should not be able to mint past 2 percent
             await expect(amesoInstance.connect(minter).mint(minter.address, DEVAMT.add(TREASURYAMT).mul(2).div(100).add(1)))
-                .to.be.revertedWith("NWK::mint: exceeded mint cap")
+                .to.be.revertedWith("AMS::mint: exceeded mint cap")
             
             await amesoInstance.connect(minter).mint(minter.address, DEVAMT.add(TREASURYAMT).mul(2).div(100))
         })
@@ -67,7 +67,7 @@ describe('Test Ameso Token', () => {
             minter = user3
 
             await expect(amesoInstance.connect(ogMinter).mint(ogMinter.address, 100))
-                .to.be.revertedWith("NWK::mint: only the treasury can mint")
+                .to.be.revertedWith("AMS::mint: only the treasury can mint")
 
             await amesoInstance.connect(minter).mint(minter.address, 100)
         })
@@ -79,28 +79,28 @@ describe('Test Ameso Token', () => {
         })
 
         it('Simple allowance to allow another user to spend my tokens', async () => {
-            let thousandNWKtokens = ethers.utils.parseEther('1000')
+            let thousandAMStokens = ethers.utils.parseEther('1000')
             let initialUser3Bal = await amesoInstance.balanceOf(user3.address)
-            await amesoInstance.connect(user1).approve(user3.address, thousandNWKtokens)
+            await amesoInstance.connect(user1).approve(user3.address, thousandAMStokens)
             let allowedAmount = await amesoInstance.allowance(user1.address, user3.address)
             let user1Bal = await amesoInstance.balanceOf(user1.address)
 
-            expect(allowedAmount).to.be.equal(thousandNWKtokens, `Incorrect allowance amount: ${allowedAmount.toString()}`)
+            expect(allowedAmount).to.be.equal(thousandAMStokens, `Incorrect allowance amount: ${allowedAmount.toString()}`)
 
             // once approved, user3 should be able to spend tokens.
             // only the recipient (user3) should be able to execute the transferFrom
             await expect(
-                amesoInstance.connect(admin).transferFrom(user1.address, user3.address, thousandNWKtokens)
+                amesoInstance.connect(admin).transferFrom(user1.address, user3.address, thousandAMStokens)
             ).to.be.reverted
 
-            await amesoInstance.connect(user3).transferFrom(user1.address, user3.address, thousandNWKtokens)
+            await amesoInstance.connect(user3).transferFrom(user1.address, user3.address, thousandAMStokens)
             let user3NewBal = await amesoInstance.balanceOf(user3.address);
 
-            expect(user3NewBal).to.be.equal(initialUser3Bal.add(thousandNWKtokens), `User3 does not have the correct balance: ${user3NewBal.toString()}`)
+            expect(user3NewBal).to.be.equal(initialUser3Bal.add(thousandAMStokens), `User3 does not have the correct balance: ${user3NewBal.toString()}`)
 
             let user1NewBal = await amesoInstance.balanceOf(user1.address);
 
-            expect(user1NewBal).to.be.equal(DEVAMT.sub(thousandNWKtokens), `User1 did not have their balance removed: ${user1NewBal.toString()}`)
+            expect(user1NewBal).to.be.equal(DEVAMT.sub(thousandAMStokens), `User1 did not have their balance removed: ${user1NewBal.toString()}`)
         })
 
         it('User should not be able to spend more than allowed tokens', async () => {

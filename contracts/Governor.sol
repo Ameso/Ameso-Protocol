@@ -3,6 +3,9 @@ pragma solidity ^0.7.3;
 pragma experimental ABIEncoderV2;
 
 import '@openzeppelin/contracts/math/SafeMath.sol';
+import './interfaces/ITreasury.sol';
+import './interfaces/IAmesoToken.sol';
+import './interfaces/IAmeso.sol';
 
 /**
  * @title Ameso Governance contract
@@ -44,11 +47,11 @@ contract Governor{
 
     uint256 public proposalCount;
 
-    TreasuryInterface public treasury;
+    ITreasury public treasury;
 
-    AmsInterface public ams;
+    IAmesoToken public ams;
 
-    AmsCoreInterface public AmsApp;
+    IAmeso public amsApp;
 
     // Possible states that a proposal may be in
     enum ProposalState {
@@ -136,10 +139,10 @@ contract Governor{
         uint256 votes;
     }
 
-    constructor(address _treasury, address _ams, address _amsCore) {
-        treasury = TreasuryInterface(_treasury);
-        ams = AmsInterface(_ams);
-        AmsApp = AmsCoreInterface(_amsCore);
+    constructor(address _treasury, address _ams, address _amsApp) {
+        treasury = ITreasury(_treasury);
+        ams = IAmesoToken(_ams);
+        amsApp = IAmeso(_amsApp);
     }
 
     /**
@@ -349,22 +352,4 @@ contract Governor{
         assembly { chainId := chainid() }
         return chainId;
     }
-}
-
-interface TreasuryInterface {
-    function delay() external view returns (uint256);
-    function GRACE_PERIOD() external view returns (uint256);
-    function acceptAdmin() external;
-    function queuedTransactions(bytes32 hash) external view returns (bool);
-    function queueTransaction(address target, uint256 value, string calldata signature, bytes calldata data, uint256 eta) external returns (bytes32);
-    function executeTransaction(address target, uint256 value, string calldata signature, bytes calldata data, uint256 eta) external payable returns (bytes memory);
-    function cancelTransaction(address target, uint256 value, string calldata signature, bytes calldata data, uint256 eta) external;
-}
-
-interface AmsInterface {
-    function getPriorVotes(address account, uint256 blockNumber) external view returns (uint256);
-}
-
-interface AmsCoreInterface {
-    function takeJob() external view;
 }

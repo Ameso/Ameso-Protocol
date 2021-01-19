@@ -30,10 +30,6 @@ contract Ameso {
         mapping (address => bool) reviewers;
     }
 
-    struct Review {
-        address reviewer;
-    }
-
     // Possible states that the Contractor may be in for a specific job
     enum ContractorJobState {
         Cancelled,

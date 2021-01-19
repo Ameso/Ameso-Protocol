@@ -2,13 +2,27 @@
 pragma solidity ^0.7.3;
 
 import '@openzeppelin/contracts/math/SafeMath.sol';
+import './interfaces/IAmesoToken.sol';
+import 'hardhat/console.sol';
 
 contract Ameso {
     using SafeMath for uint256;
     
+    // -- State --
+    mapping (address => bool) employers;
     mapping (string => Job) jobs;
     uint256 public jobCount;
+
+    // fee that employer must pay to list job
+    // TO DO : per employee or whole job listing?
+    uint256 public baseFee;
+
+    // Contract containing actions related to employers
+    address public employerHub;
+
 	address public treasury;
+
+    IAmesoToken public ams;
 
     struct Job {
         // Unique id for each job
@@ -45,8 +59,9 @@ contract Ameso {
         Completed
     }
 
-    constructor(address _treasury) {
+    constructor(address _treasury, address _ams) {
         treasury = _treasury;
+        ams = IAmesoToken(_ams);
     }
 
     /**
@@ -72,9 +87,17 @@ contract Ameso {
     /**
      * @dev
      * @param _ipfsID Unique ID that points to storage in ipfs
+     * @param _employer Address of the employer
+     * @param _tip Optional tip
      */
-    function createJob(string memory _ipfsID, uint256 _baseFee, uint256 _tip) public {
-        // Has to pay a minimum base fee
+    function createJob(
+        bytes memory _ipfsID, 
+        address _employer,
+        uint256 _tip
+    ) public {
+        require(msg.sender == employerHub, 'Ameso::createJob: must be called by the employerHub');
+        
+        ams.transferFrom(_employer, treasury, baseFee);
 
         // Optional tip that will be paid to reviewer 
 

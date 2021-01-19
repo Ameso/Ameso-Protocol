@@ -50,7 +50,7 @@ describe("Governor", () => {
             amesoFactory = await ethers.getContractFactory("Ameso")
 
             // ADMIN NONCE 3
-            amesoApp = await amesoFactory.deploy(treasury.address)
+            amesoApp = await amesoFactory.deploy(treasury.address, amesoInstance.address)
         })
 
         it('Can deploy governance contract', async () => {

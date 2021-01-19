@@ -11,6 +11,15 @@ describe("Governor", () => {
     let admin, user1, user2, user3
     let firstProposalID = 1
     const abi = new ethers.utils.AbiCoder()
+    let snapShotId
+
+    before(async () => {
+        snapShotId = await provider.send('evm_snapshot', [2])
+    })
+
+    after(async () => {
+        await provider.send('evm_revert', [snapShotId])
+    })
 
     describe('Deployment of contracts', () => {
         it('Assign signers', async () => {

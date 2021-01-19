@@ -10,6 +10,15 @@ describe('Test Ameso Token', () => {
     let amesoInstance
     let amesoABI
     let admin, user1, user2, user3, minter
+    let snapShotId
+
+    before(async () => {
+        snapShotId = await provider.send('evm_snapshot', [1])
+    })
+
+    after(async () => {
+        await provider.send('evm_revert', [snapShotId])
+    })
 
     describe('Basic deployment', () => {
         it('Can deploy Ameso token', async () => {

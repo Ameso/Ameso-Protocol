@@ -18,13 +18,23 @@ contract Employer {
     /**
      * @dev Sends a job to the Ameso Application
      * @param _ipfsHash IPFS id of the job 
-     * @
+     * @param _tip Optional tip for contractors
      *
      */ 
     function createJob(
-        bytes memory _ipfsHash
+        string memory _ipfsHash,
+        uint256 _tip
     ) public {
-        console.logBytes(_ipfsHash);
-        amsApp.createJob(_ipfsHash, msg.sender, 0);
+        amsApp.createJob(_ipfsHash, msg.sender, _tip);
+    }
+
+    /**
+     * @dev Cancel the job 
+     */
+    function cancelJob(
+        string memory _ipfsHash
+    ) public {
+        //require(amsApp.jobExists(_ipfsHash));
+        //require(msg.sender == am)
     }
 }

@@ -2,6 +2,9 @@
 pragma solidity ^0.7.3;
 
 interface ITreasury {
+    function payListing(string memory ipfsID, address employer, uint256 baseFee, uint256 tip) external;
+
+    // Timelock 
     function delay() external view returns (uint256);
     function GRACE_PERIOD() external view returns (uint256);
     function acceptAdmin() external;

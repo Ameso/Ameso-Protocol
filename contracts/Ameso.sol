@@ -3,6 +3,7 @@ pragma solidity ^0.7.3;
 
 import '@openzeppelin/contracts/math/SafeMath.sol';
 import './interfaces/IAmesoToken.sol';
+import './interfaces/ITreasury.sol';
 import 'hardhat/console.sol';
 
 contract Ameso {
@@ -10,7 +11,10 @@ contract Ameso {
     
     // -- State --
     mapping (address => bool) employers;
-    mapping (string => Job) jobs;
+
+    // The ipfs hash of the job is the key
+    mapping (string => Job) public jobs;
+
     uint256 public jobCount;
 
     // fee that employer must pay to list job
@@ -20,7 +24,7 @@ contract Ameso {
     // Contract containing actions related to employers
     address public employerHub;
 
-	address public treasury;
+	ITreasury public treasury;
 
     IAmesoToken public ams;
 
@@ -42,11 +46,14 @@ contract Ameso {
 
         // Reviewers enrolled in the job
         mapping (address => bool) reviewers;
+
+        // Canceled job
+        bool canceled;
     }
 
     // Possible states that the Contractor may be in for a specific job
     enum ContractorJobState {
-        Cancelled,
+        Canceled,
         Pending,
         Completed
     }
@@ -60,7 +67,7 @@ contract Ameso {
     }
 
     constructor(address _treasury, address _ams) {
-        treasury = _treasury;
+        treasury = ITreasury(_treasury);
         ams = IAmesoToken(_ams);
     }
 
@@ -80,8 +87,16 @@ contract Ameso {
 
     /**
      * @dev Get the current state of the job
+     * @param _ipfsID The ipfs hash 
      */
-    function getJobState(string memory _ipfsID) public view returns (JobState){
+    function jobState(string memory _ipfsID) public view returns (JobState){
+        require(bytes(_ipfsID).length > 0, 'Ameso::jobState: ipfs ID does not exist');
+
+        Job storage job = jobs[_ipfsID];
+
+        if (job.canceled) {
+            return JobState.Canceled;
+        }
     }
 
     /**
@@ -91,16 +106,19 @@ contract Ameso {
      * @param _tip Optional tip
      */
     function createJob(
-        bytes memory _ipfsID, 
+        string memory _ipfsID, 
         address _employer,
         uint256 _tip
     ) public {
         require(msg.sender == employerHub, 'Ameso::createJob: must be called by the employerHub');
+        // all other checks handled by the employer hub
         
-        ams.transferFrom(_employer, treasury, baseFee);
+        // keep track of payments in treasury
+        treasury.payListing(_ipfsID, _employer, baseFee, _tip);
 
-        // Optional tip that will be paid to reviewer 
-
+        jobCount++;
+        Job storage newJob = jobs[_ipfsID];
+        
     }
 
     function removeJob() public {
@@ -113,7 +131,7 @@ contract Ameso {
 
     function payReviewers() public {
         // Can only be called by the treasury
-        require(msg.sender == treasury, "Ameso::payReviewers: only treasury can call this function");
+        //require(msg.sender == treasury, "Ameso::payReviewers: only treasury can call this function");
 
         // Check 
     }

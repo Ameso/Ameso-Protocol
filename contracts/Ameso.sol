@@ -9,17 +9,26 @@ import 'hardhat/console.sol';
 contract Ameso {
     using SafeMath for uint256;
 
-    modifier onlyController() {
+    modifier onlyTreasury() {
         require(msg.sender == address(treasury));
         _;
     }
 
-    modifier onlyEmployerHub() {
-        require(msg.sender == employerHub, "Call must come from employer hub contract");
+    modifier onlyEmployer() {
+        require(msg.sender == employer, "Call must come from employer contract");
         _;
     }
 
-    
+    modifier onlyReviewer() {
+        require(msg.sender == reviewer, "Call must come from reviewer contract");
+        _;
+    }
+
+    modifier onlyContractor() {
+        require(msg.sender == contractor, "Call must come from contractor contract");
+        _;
+    }
+
     // -- State --
     mapping (address => bool) employers;
 
@@ -30,20 +39,28 @@ contract Ameso {
 
     // fee that employer must pay to list job
     // TO DO : per employee or whole job listing?
-    uint256 public baseFee;
+    uint256 public baseFee = 1e18;
 
     uint256 public maxContractors = 1000000;
 
     uint256 public minContractors = 1;
+
+    uint256 public contractorPercentage = 75;
 
     // minimum delay before the job can enroll contractors
     // assume 15s block times
     uint256 public minEnrollDelay = 240;
 
     // Contract containing actions related to employers
-    address public employerHub;
+    address public employer;
 
-	ITreasury public treasury;
+    // Contract containing actions related to reviewers
+    address public reviewer;
+
+    // Contract containing actions related to reviewers
+    address public contractor;
+
+    ITreasury public treasury;
 
     IAmesoToken public ams;
 
@@ -53,6 +70,12 @@ contract Ameso {
 
         // Creator of the job listing
         address employer;
+
+        // Fee paid at the time of job creation
+        uint256 fee; 
+
+        // Tip paid at the time of job creation
+        uint256 tip;
 
         // Max contractors per job
         uint256 maxContractors;
@@ -72,24 +95,43 @@ contract Ameso {
         // Canceled job
         bool canceled;
 
+        // Cancellation Block
+        uint256 cancelBlock;
+
+        // Approval Count
+        uint256 approvalCount;
+
+        ContractorReceipt[] contractors; 
+
         // Contractors enrolled in the job
         mapping (address => ContractorReceipt) contractorReceipts;
-
-        // Reviewers enrolled in the job
-        mapping (address => ReviewerReceipt) reviewerReceipts;
     }
 
     struct ContractorReceipt {
         // time of contractor enrollment
-        uint256 enrollTime;
+        uint256 enrollBlock;
+
+        // ipfs id where work is stored
+        string workId;
 
         // cancellation of job
         bool canceled;
+
+        ReviewerReceipt[] reviewers;
+
+        // reviewers for the contractor's work
+        mapping (address => ReviewerReceipt) reviewerReceipts;
     }
 
     struct ReviewerReceipt {
         // time of reviewer enrollment
-        uint256 enrollTime;
+        uint256 enrollBlock;
+
+        // ipfs id where review work is stored
+        string workId;
+
+        // approval of the contractor's work
+        bool approval;
 
         // cancellation of review
         bool canceled;
@@ -108,7 +150,9 @@ contract Ameso {
         Canceled,
         Enrolling,
         Queued,
-        Completed
+        PrematureCompletion,
+        Completed,
+        Paid
     }
 
     // -- Events --
@@ -119,35 +163,48 @@ contract Ameso {
     // An event emitted when a job has been cancelled
     event JobCanceled(string ipfsID);
 
+    // An event emitted when a job has been paid
+    event Payout(string ipfsID);
+    
+    // An event emitted when a job has been paid
+    event PromptDelete();
+
     constructor(address _treasury, address _ams, address _employer) {
         treasury = ITreasury(_treasury);
         ams = IAmesoToken(_ams);
-        employerHub = _employer;
+        employer = _employer;
     }
 
     /**
      * @dev Change the maxContractors
      */
-    function setMaxContractors(uint256 _max) public onlyController {
+    function setMaxContractors(uint256 _max) public onlyTreasury {
     }
 
     /**
      * @dev Change the base fee 
      */
-    function setBaseFee(uint256 _baseFee) public onlyController {
+    function setBaseFee(uint256 _baseFee) public onlyTreasury {
+        require(_baseFee > 0, "Ameso::setBaseFee: fee has to be greater than 0");
+        baseFee = _baseFee;
     }
 
     /**
      * @dev Review calls this function to approve/disapprove job done by contractor
      */
-    function reviewJob(string memory _ipfsID, bool _approve) public {
+    function reviewJob(
+        string memory _ipfsID,
+        bool _approve
+    ) public
+        onlyReviewer
+    {
         // Add caller to mapping of reviewers
 
         // Caller cannot review a job multiple times
 
     }
 
-    function enrollJob(string memory _ipfsID) public {
+    function enrollJob(string memory _ipfsID) public onlyContractor {
         // Cannot have too many contractors for a job. Limit created by employer
     }
 
@@ -160,11 +217,15 @@ contract Ameso {
 
         Job storage job = jobs[_ipfsID];
 
-        if (job.canceled) {
+        if (job.canceled && job.cancelBlock < job.startBlock) {
             return JobState.Canceled;
-        } else if (block.number <= startBlock) {
+        } else if (job.canceled && job.cancelBlock >= job.startBlock) {
+            return JobState.PrematureCompletion;
+        } else if (block.number <= job.startBlock) {
             return JobState.Pending;
-        }
+        } else if (block.number <= job.endBlock) {
+            return JobState.Enrolling;
+        } 
     }
 
     /**
@@ -197,7 +258,7 @@ contract Ameso {
         uint256 _jobLength,
         uint256 _tip
     ) public 
-       onlyEmployerHub
+       onlyEmployer
     {
         // all other checks handled by the employer hub
         // keep track of payments in treasury
@@ -221,27 +282,57 @@ contract Ameso {
         emit JobListed(_ipfsID);
     }
 
+    /**
+     * @dev 
+     */
     function cancelJob(
         string memory _ipfsID,
         address _employer
     ) public
-        onlyEmployerHub 
+        onlyEmployer 
     {
-        JobState state = jobState(_ipfsID);
-        require(state == JobState.Pending || state == JobState.Enrolling, "Ameso::cancelJob: Job must be pending or enrolling"); 
+        require(jobState(_ipfsID) == JobState.Pending || jobState(_ipfsID) == JobState.Enrolling, "Ameso::cancelJob: Job must be pending or enrolling"); 
 
         Job storage selectedJob = jobs[_ipfsID];
+        selectedJob.cancelBlock = block.number;
         selectedJob.canceled = true;
     }
 
-    function reviewJob() public {
-
+    /**
+     * @dev
+     */
+    function reviewJob() public onlyReviewer {
     }
 
-    function payReviewers() public {
-        // Can only be called by the treasury
-        //require(msg.sender == treasury, "Ameso::payReviewers: only treasury can call this function");
+    /**
+     * @dev Returns number of approved work for a given job
+     */
+    function getApproved(string memory _ipfsID) public view returns (uint256) {
+        Job storage job = jobs[_ipfsID];
+        return job.approvalCount;
+    }
 
-        // Check 
+    /**
+     * @dev 
+     */
+    function payout(string memory _ipfsID) public {
+        require(jobState(_ipfsID) == JobState.Completed || jobState(_ipfsID) == JobState.PrematureCompletion, "Ameso::payout: Can only be paid when job is completed");
+        Job storage job = jobs[_ipfsID];
+
+        uint256 contractorPool = (job.fee + job.tip) * contractorPercentage/100;
+        uint256 reviewerPool = (job.fee + job.tip) * (1 - contractorPercentage/100);
+
+        for (uint256 i = 0; i < job.approvalCount; i++) {
+            address to = job.contractors[i];
+        }
+
+        // pay the reviewers
+         
+        emit Payout(_ipfsID);
+    }
+
+    function _nodeDelData() internal {
+        
+        emit PromptDelete();
     }
 }

@@ -75,14 +75,14 @@ describe('Test Ameso Token', () => {
             let minContractors = 10
             let maxContractors = 100
             let extraEnrollDelay = 0
-            let jobLength = 432000
+            let jobLengthBlocks = 28800
             let tip = 0
 
             await employer.connect(user1).createJob("JobID", 
                                                 minContractors,
                                                 maxContractors,
                                                 extraEnrollDelay,
-                                                jobLength,
+                                                jobLengthBlocks,
                                                 tip)
         })
     })

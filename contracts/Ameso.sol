@@ -107,6 +107,7 @@ contract Ameso {
         Pending,
         Canceled,
         Enrolling,
+        Queued,
         Completed
     }
 
@@ -127,7 +128,13 @@ contract Ameso {
     /**
      * @dev Change the maxContractors
      */
-    function setMaxContractors(uint256 _max) public {
+    function setMaxContractors(uint256 _max) public onlyController {
+    }
+
+    /**
+     * @dev Change the base fee 
+     */
+    function setBaseFee(uint256 _baseFee) public onlyController {
     }
 
     /**
@@ -155,6 +162,8 @@ contract Ameso {
 
         if (job.canceled) {
             return JobState.Canceled;
+        } else if (block.number <= startBlock) {
+            return JobState.Pending;
         }
     }
 

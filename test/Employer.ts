@@ -7,8 +7,8 @@ use(solidity)
 
 describe('Test Ameso Token', () => {    
     const provider = waffle.provider
-    let amesoInstance, governor, amesoApp, treasury
-    let AmesoFactory, treasuryFactory, governorFactory, amesoFactory
+    let amesoInstance, governor, amesoApp, treasury, employer
+    let AmesoFactory, treasuryFactory, governorFactory, amesoFactory, employerFactory
     let admin, user1, user2, user3
     let firstProposalID = 1
     const abi = new ethers.utils.AbiCoder()
@@ -22,7 +22,7 @@ describe('Test Ameso Token', () => {
         await provider.send('evm_revert', [snapShotId])
     })
 
-     describe('Deployment of contracts', () => {
+    describe('Deployment of contracts', () => {
         it('Assign signers', async () => {
             [admin, user1, user2, user3] = await ethers.getSigners()
         })
@@ -31,7 +31,7 @@ describe('Test Ameso Token', () => {
             let latestBlock = await provider.getBlock('latest')
             AmesoFactory = await ethers.getContractFactory("AmesoToken")
 
-            // ADMIN NONCE 1
+            // ADMIN NONCE 0 
             amesoInstance = await AmesoFactory.deploy(user1.address, user2.address, DEVAMT, TREASURYAMT, latestBlock.timestamp + 60)
         })
 
@@ -42,7 +42,7 @@ describe('Test Ameso Token', () => {
             let governorAddress = ethers.utils.getContractAddress({ from: admin.address, nonce: 3 })
             treasuryFactory = await ethers.getContractFactory("Treasury")
 
-            // ADMIN NONCE 2
+            // ADMIN NONCE 1 
             treasury = await treasuryFactory.deploy(governorAddress, DELAY)
             await treasury.setPending
        })
@@ -50,14 +50,40 @@ describe('Test Ameso Token', () => {
         it('Can deploy AmesoApp', async () => {
             amesoFactory = await ethers.getContractFactory("Ameso")
 
-            // ADMIN NONCE 3
-            amesoApp = await amesoFactory.deploy(treasury.address, amesoInstance.address)
+            // ADMIN NONCE 2 
+            let employerAddress = ethers.utils.getContractAddress({ from: admin.address, nonce: 4 })
+            amesoApp = await amesoFactory.deploy(treasury.address, amesoInstance.address, employerAddress)
         })
 
         it('Can deploy governance contract', async () => {
             governorFactory = await ethers.getContractFactory("Governor")
 
+            // ADMIN NONCE 3 
             governor = await governorFactory.deploy(treasury.address, amesoInstance.address, amesoApp.address)
+        })
+
+        it('Can deploy employer contract', async () => {
+            employerFactory = await ethers.getContractFactory("Employer")
+
+            // ADMIN NONCE 4
+            employer = await employerFactory.deploy(amesoApp.address)
+        })
+    })
+
+    describe('Creating a job', () => {
+        it('Create a job', async () => {
+            let minContractors = 10
+            let maxContractors = 100
+            let extraEnrollDelay = 0
+            let jobLength = 432000
+            let tip = 0
+
+            await employer.connect(user1).createJob("JobID", 
+                                                minContractors,
+                                                maxContractors,
+                                                extraEnrollDelay,
+                                                jobLength,
+                                                tip)
         })
     })
 })

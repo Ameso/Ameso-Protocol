@@ -1,4 +1,5 @@
 import "@nomiclabs/hardhat-waffle";
+import "hardhat-gas-reporter";
 
 export default {
   solidity: "0.7.3",
@@ -9,6 +10,8 @@ export default {
   },
   mocha: {
     timeout: 40000
+  },
+  gasReporter: {
   }
 }
 

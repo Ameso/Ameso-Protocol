@@ -101,7 +101,7 @@ contract Ameso {
         // Approval Count
         uint256 approvalCount;
 
-        ContractorReceipt[] contractors; 
+        address[] contractors; 
 
         // Contractors enrolled in the job
         mapping (address => ContractorReceipt) contractorReceipts;
@@ -199,6 +199,7 @@ contract Ameso {
         onlyReviewer
     {
         // Add caller to mapping of reviewers
+
 
         // Caller cannot review a job multiple times
 
@@ -299,12 +300,6 @@ contract Ameso {
     }
 
     /**
-     * @dev
-     */
-    function reviewJob() public onlyReviewer {
-    }
-
-    /**
      * @dev Returns number of approved work for a given job
      */
     function getApproved(string memory _ipfsID) public view returns (uint256) {
@@ -322,8 +317,16 @@ contract Ameso {
         uint256 contractorPool = (job.fee + job.tip) * contractorPercentage/100;
         uint256 reviewerPool = (job.fee + job.tip) * (1 - contractorPercentage/100);
 
+        uint256 individualAmt = contractorPool / job.approvalCount;
+
         for (uint256 i = 0; i < job.approvalCount; i++) {
             address to = job.contractors[i];
+
+            // transfer money from the treasury to the contractor
+            treasury.payout(to, individualAmt);
+
+            // transfer money from the treasury to the reviewers
+
         }
 
         // pay the reviewers
@@ -332,7 +335,6 @@ contract Ameso {
     }
 
     function _nodeDelData() internal {
-        
         emit PromptDelete();
     }
 }

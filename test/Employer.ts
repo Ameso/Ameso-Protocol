@@ -42,9 +42,10 @@ describe('Test Ameso Token', () => {
             let governorAddress = ethers.utils.getContractAddress({ from: admin.address, nonce: 3 })
             treasuryFactory = await ethers.getContractFactory("Treasury")
 
+            let amesoAppAddress = ethers.utils.getContractAddress({ from: admin.address, nonce: 2 })
+
             // ADMIN NONCE 1 
-            treasury = await treasuryFactory.deploy(governorAddress, DELAY)
-            await treasury.setPending
+            treasury = await treasuryFactory.deploy(governorAddress, amesoAppAddress,  DELAY)
        })
 
         it('Can deploy AmesoApp', async () => {

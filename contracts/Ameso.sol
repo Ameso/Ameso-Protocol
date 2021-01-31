@@ -83,9 +83,6 @@ contract Ameso {
         // Min contractors per job
         uint256 minContractors;
 
-        // Amount of time given to each contractor to finish job
-        uint256 allocatedTime;
-
         // The block when the job listing will open
         uint256 startBlock;
 
@@ -101,7 +98,15 @@ contract Ameso {
         // Approval Count
         uint256 approvalCount;
 
+        // Reviewer Count
+        uint256 reviewerCount;
+
+        // Contractor Count
+        uint256 contractorCount;
+
         address[] contractors; 
+
+        address[] reviewers;
 
         // Contractors enrolled in the job
         mapping (address => ContractorReceipt) contractorReceipts;
@@ -115,7 +120,7 @@ contract Ameso {
         string workId;
 
         // cancellation of job
-        bool canceled;
+        bool cancelled;
 
         ReviewerReceipt[] reviewers;
 
@@ -134,7 +139,7 @@ contract Ameso {
         bool approval;
 
         // cancellation of review
-        bool canceled;
+        bool cancelled;
     }
 
     // Possible states that the Contractor may be in for a specific job
@@ -146,28 +151,32 @@ contract Ameso {
 
     // Possible states that the job may be in
     enum JobState {
-        Pending,
+        Pending, // Enrollment has closed and job is about to start
         Canceled,
         Enrolling,
         Queued,
         PrematureCompletion,
         Completed,
+        InProgress,
         Paid
     }
 
     // -- Events --
     
     // An event emitted when a job has been created
-    event JobListed(string ipfsID);
+    event JobListed(string cid);
 
     // An event emitted when a job has been cancelled
-    event JobCanceled(string ipfsID);
+    event JobCanceled(string cid);
 
     // An event emitted when a job has been paid
-    event Payout(string ipfsID);
+    event Payout(string cid);
     
     // An event emitted when a job has been paid
     event PromptDelete();
+
+    // An event emitted when a contractor enrolls in a job
+    event Enrollment(address contractor, string cid);
 
     constructor(address _treasury, address _ams, address _employer) {
         treasury = ITreasury(_treasury);
@@ -205,8 +214,26 @@ contract Ameso {
 
     }
 
-    function enrollJob(string memory _ipfsID) public onlyContractor {
-        // Cannot have too many contractors for a job. Limit created by employer
+    function enrollJob(string memory _cid, address contractor) public onlyContractor {
+        // most checks done on Contractor contract
+        Job storage job = jobs[_cid];
+        job.contractorCount++;
+
+        // create receipt for enrollment 
+        require(job.contractorReceipts[contractor].enrollBlock == 0, "Ameso::enrollJob: contractor already enrolled in job");
+        ContractorReceipt storage newReceipt = job.contractorReceipts[contractor];
+        newReceipt.enrollBlock = block.number;
+        newReceipt.cancelled = false;
+
+        emit Enrollment(contractor, _cid);
+    }
+
+    function leaveJob(string memory _cid, address contractor) public onlyContractor {
+        // most checks done on Contractor contract
+        Job storage job = jobs[_cid];
+
+        require(job.contractorReceipts[contractor].enrollBlock > 0, "Ameso::leaveJob: contractor is not part of job");
+        ContractorReceipt storage receipt = job.contractorReceipts[contractor];
     }
 
     /**
@@ -222,10 +249,10 @@ contract Ameso {
             return JobState.Canceled;
         } else if (job.canceled && job.cancelBlock >= job.startBlock) {
             return JobState.PrematureCompletion;
+        } else if (block.number <= job.startBlock && job.contractorCount < job.maxContractors) {
+            return JobState.Enrolling;
         } else if (block.number <= job.startBlock) {
             return JobState.Pending;
-        } else if (block.number <= job.endBlock) {
-            return JobState.Enrolling;
         } 
     }
 
@@ -318,23 +345,18 @@ contract Ameso {
         uint256 reviewerPool = (job.fee + job.tip) * (1 - contractorPercentage/100);
 
         uint256 individualAmt = contractorPool / job.approvalCount;
+        uint256 individualReviewerAmt = reviewerPool / job.reviewerCount;
 
         for (uint256 i = 0; i < job.approvalCount; i++) {
             address to = job.contractors[i];
-
-            // transfer money from the treasury to the contractor
             treasury.payout(to, individualAmt);
-
-            // transfer money from the treasury to the reviewers
-
         }
 
-        // pay the reviewers
+        for (uint256 i = 0; i < job.reviewerCount; i++) {
+            address to = job.reviewers[i];
+            treasury.payout(to, individualReviewerAmt);
+        }
          
         emit Payout(_ipfsID);
-    }
-
-    function _nodeDelData() internal {
-        emit PromptDelete();
     }
 }

@@ -14,5 +14,6 @@ interface IAmeso {
                         uint256 _extraEnrollDelay,
                         uint256 _jobLength,
                         uint256 _tip) external; 
-    function cancelJob(string memory _ipfsID, address _employer) external;
+    function cancelJob(string memory _cid, address _employer) external;
+    function enrollJob(string memory _cid, address _contractor) external;
 }
